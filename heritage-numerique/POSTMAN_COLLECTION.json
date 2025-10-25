@@ -1,0 +1,1114 @@
+{
+  "info": {
+    "name": "Heritage Numérique - API Complete",
+    "description": "Collection complète des endpoints Heritage Numérique avec workflow logique",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenEditeur",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenSuperAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "familleId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "invitationId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "contenuId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "codeInvitation",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. AUTHENTIFICATION",
+      "item": [
+        {
+          "name": "1.1 Inscription Admin Famille",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('tokenAdmin', jsonData.accessToken);",
+                  "    pm.environment.set('userId', jsonData.userId);",
+                  "    console.log('Token Admin sauvegardé:', jsonData.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Dupont\",\n  \"prenom\": \"Jean\",\n  \"email\": \"admin@famille-dupont.com\",\n  \"motDePasse\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Créer un compte admin qui pourra créer une famille"
+          }
+        },
+        {
+          "name": "1.2 Connexion Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('tokenAdmin', jsonData.accessToken);",
+                  "    console.log('Token Admin sauvegardé');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@famille-dupont.com\",\n  \"motDePasse\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Inscription Super-Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('tokenSuperAdmin', jsonData.accessToken);",
+                  "    console.log('⚠️ IMPORTANT: Modifier le rôle en BDD:');",
+                  "    console.log('UPDATE utilisateur SET role = \\'ROLE_ADMIN\\' WHERE email = \\'superadmin@heritage.com\\';');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Super\",\n  \"prenom\": \"Admin\",\n  \"email\": \"superadmin@heritage.com\",\n  \"motDePasse\": \"SuperAdmin123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "⚠️ Après création, modifier le rôle en BDD: UPDATE utilisateur SET role = 'ROLE_ADMIN' WHERE email = 'superadmin@heritage.com';"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. FAMILLES",
+      "item": [
+        {
+          "name": "2.1 Créer une Famille",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('familleId', jsonData.id);",
+                  "    console.log('Famille créée ID:', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Famille Dupont\",\n  \"description\": \"Notre patrimoine familial traditionnel\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/familles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "familles"]
+            },
+            "description": "L'utilisateur devient automatiquement ADMIN de la famille"
+          }
+        },
+        {
+          "name": "2.2 Récupérer une Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/familles/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "familles", "{{familleId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Mes Familles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/familles/mes-familles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "familles", "mes-familles"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. INVITATIONS",
+      "item": [
+        {
+          "name": "3.1 Créer une Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('invitationId', jsonData.id);",
+                  "    pm.environment.set('codeInvitation', jsonData.codeInvitation);",
+                  "    console.log('Code invitation:', jsonData.codeInvitation);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idFamille\": {{familleId}},\n  \"emailInvite\": \"marie@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations"]
+            },
+            "description": "ADMIN crée une invitation. Code unique généré automatiquement."
+          }
+        },
+        {
+          "name": "3.2 Inscription avec Code Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('tokenEditeur', jsonData.accessToken);",
+                  "    console.log('⚠️ Invitation reste EN_ATTENTE');",
+                  "    console.log('Utilisateur doit accepter depuis dashboard');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Martin\",\n  \"prenom\": \"Marie\",\n  \"email\": \"marie@example.com\",\n  \"motDePasse\": \"MariePass123!\",\n  \"codeInvitation\": \"{{codeInvitation}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "⚠️ IMPORTANT: L'invitation reste EN_ATTENTE. L'utilisateur doit accepter/refuser depuis son dashboard."
+          }
+        },
+        {
+          "name": "3.3 Accepter Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationId}}/accepter",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "{{invitationId}}", "accepter"]
+            },
+            "description": "Utilisateur accepte l'invitation. Statut passe à ACCEPTEE."
+          }
+        },
+        {
+          "name": "3.4 Refuser Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationId}}/refuser",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "{{invitationId}}", "refuser"]
+            },
+            "description": "Utilisateur refuse l'invitation. membre_famille supprimé."
+          }
+        },
+        {
+          "name": "3.5 Mes Invitations Envoyées",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/mes-invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "mes-invitations"]
+            }
+          }
+        },
+        {
+          "name": "3.6 Invitations de la Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/famille/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "famille", "{{familleId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. DASHBOARD",
+      "item": [
+        {
+          "name": "4.1 Dashboard Personnel (Voir Invitations)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/personnel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "personnel"]
+            },
+            "description": "⭐ NOUVEAU - Affiche invitations en attente + familles + statistiques personnelles"
+          }
+        },
+        {
+          "name": "4.2 Dashboard Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/famille/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "famille", "{{familleId}}"]
+            },
+            "description": "Statistiques de la famille: membres, invitations, contenus, quiz, etc."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. CONTENUS",
+      "item": [
+        {
+          "name": "5.1 Créer Contenu Privé (EDITEUR ou ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('contenuId', jsonData.id);",
+                  "    console.log('Contenu créé ID:', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idFamille\": {{familleId}},\n  \"idCategorie\": 1,\n  \"titre\": \"Le conte du grand-père\",\n  \"description\": \"Histoire traditionnelle transmise de génération en génération\",\n  \"typeContenu\": \"TEXTE\",\n  \"statut\": \"BROUILLON\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contenus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contenus"]
+            },
+            "description": "⭐ EDITEUR peut créer des contenus (pas seulement ADMIN)"
+          }
+        },
+        {
+          "name": "5.2 Créer Contenu Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idFamille\": {{familleId}},\n  \"idCategorie\": 3,\n  \"titre\": \"Musique traditionnelle bambara\",\n  \"description\": \"Chanson ancestrale de notre famille\",\n  \"typeContenu\": \"AUDIO\",\n  \"urlFichier\": \"https://storage.exemple.com/musique123.mp3\",\n  \"duree\": 180,\n  \"statut\": \"BROUILLON\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contenus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contenus"]
+            }
+          }
+        },
+        {
+          "name": "5.3 Demander Publication (ADMIN seulement)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('Demande envoyée au SUPERADMIN');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contenus/{{contenuId}}/demander-publication",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contenus", "{{contenuId}}", "demander-publication"]
+            },
+            "description": "⭐ Seul l'ADMIN de la famille peut demander la publication. EDITEUR ne peut PAS."
+          }
+        },
+        {
+          "name": "5.4 Récupérer Contenus Publics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/contenus/publics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contenus", "publics"]
+            },
+            "description": "Accessible sans authentification (contenus publiés)"
+          }
+        },
+        {
+          "name": "5.5 Récupérer Contenus Privés Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contenus/famille/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contenus", "famille", "{{familleId}}"]
+            },
+            "description": "Contenus privés (BROUILLON + ARCHIVE) - uniquement membres"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. SUPER-ADMIN - Validation Publications",
+      "item": [
+        {
+          "name": "6.1 Lister Demandes de Publication",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/demandes-publication",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "demandes-publication"]
+            },
+            "description": "⭐ SUPERADMIN voit toutes les demandes EN_ATTENTE"
+          }
+        },
+        {
+          "name": "6.2 Valider Publication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Contenu publié avec succès');",
+                  "    console.log('Vérifier: GET /api/contenus/publics');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/demandes-publication/1/valider",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "demandes-publication", "1", "valider"]
+            },
+            "description": "⭐ Seul SUPERADMIN peut valider. Contenu devient PUBLIE."
+          }
+        },
+        {
+          "name": "6.3 Rejeter Publication",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/demandes-publication/1/rejeter?commentaire=Contenu non conforme aux règles de la communauté",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "demandes-publication", "1", "rejeter"],
+              "query": [
+                {
+                  "key": "commentaire",
+                  "value": "Contenu non conforme aux règles de la communauté"
+                }
+              ]
+            },
+            "description": "⭐ SUPERADMIN rejette avec commentaire. Notification envoyée à l'ADMIN famille."
+          }
+        },
+        {
+          "name": "6.4 Statistiques Globales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/statistiques",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "statistiques"]
+            }
+          }
+        },
+        {
+          "name": "6.5 Créer Catégorie",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/categories?nom=Danses&description=Danses traditionnelles&icone=dance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "categories"],
+              "query": [
+                {
+                  "key": "nom",
+                  "value": "Danses"
+                },
+                {
+                  "key": "description",
+                  "value": "Danses traditionnelles"
+                },
+                {
+                  "key": "icone",
+                  "value": "dance"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "6.6 Lister Catégories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "categories"]
+            }
+          }
+        },
+        {
+          "name": "6.7 Supprimer Catégorie",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/categories/5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "superadmin", "categories", "5"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. QUIZ",
+      "item": [
+        {
+          "name": "7.1 Créer Quiz Famille (EDITEUR ou ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('quizId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idFamille\": {{familleId}},\n  \"titre\": \"Quiz sur les contes familiaux\",\n  \"description\": \"Testez vos connaissances sur l'histoire de notre famille\",\n  \"difficulte\": \"MOYEN\",\n  \"tempsLimite\": 600,\n  \"actif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/quiz",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "quiz"]
+            },
+            "description": "EDITEUR ou ADMIN peut créer des quiz pour la famille"
+          }
+        },
+        {
+          "name": "7.2 Créer Quiz pour Contenu Public",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenSuperAdmin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idFamille\": {{familleId}},\n  \"titre\": \"Quiz sur l'artisanat traditionnel\",\n  \"description\": \"Quiz public sur le contenu publié\",\n  \"difficulte\": \"FACILE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/quiz/public/{{contenuId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "quiz", "public", "{{contenuId}}"]
+            },
+            "description": "SUPERADMIN ou ADMIN famille crée quiz pour contenu public"
+          }
+        },
+        {
+          "name": "7.3 Récupérer un Quiz",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/quiz/{{quizId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "quiz", "{{quizId}}"]
+            }
+          }
+        },
+        {
+          "name": "7.4 Quiz de la Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/quiz/famille/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "quiz", "famille", "{{familleId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. ARBRE GENEALOGIQUE",
+      "item": [
+        {
+          "name": "8.1 Créer Arbre (ADMIN seulement)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('arbreId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre?familleId={{familleId}}&nom=Arbre Dupont&description=Notre arbre généalogique complet",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre"],
+              "query": [
+                {
+                  "key": "familleId",
+                  "value": "{{familleId}}"
+                },
+                {
+                  "key": "nom",
+                  "value": "Arbre Dupont"
+                },
+                {
+                  "key": "description",
+                  "value": "Notre arbre généalogique complet"
+                }
+              ]
+            },
+            "description": "Seul ADMIN peut créer un arbre généalogique"
+          }
+        },
+        {
+          "name": "8.2 Ajouter Membre (Patriarche)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('membrePereId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre/{{arbreId}}/membre?nom=Dupont&prenom=Pierre",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre", "{{arbreId}}", "membre"],
+              "query": [
+                {
+                  "key": "nom",
+                  "value": "Dupont"
+                },
+                {
+                  "key": "prenom",
+                  "value": "Pierre"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8.3 Ajouter Membre (Matriarche)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('membreMereId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre/{{arbreId}}/membre?nom=Martin&prenom=Jeanne",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre", "{{arbreId}}", "membre"],
+              "query": [
+                {
+                  "key": "nom",
+                  "value": "Martin"
+                },
+                {
+                  "key": "prenom",
+                  "value": "Jeanne"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8.4 Ajouter Enfant avec Parents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre/{{arbreId}}/membre?nom=Dupont&prenom=Jean&pereId={{membrePereId}}&mereId={{membreMereId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre", "{{arbreId}}", "membre"],
+              "query": [
+                {
+                  "key": "nom",
+                  "value": "Dupont"
+                },
+                {
+                  "key": "prenom",
+                  "value": "Jean"
+                },
+                {
+                  "key": "pereId",
+                  "value": "{{membrePereId}}"
+                },
+                {
+                  "key": "mereId",
+                  "value": "{{membreMereId}}"
+                }
+              ]
+            },
+            "description": "Ajouter un membre avec relations parent/enfant"
+          }
+        },
+        {
+          "name": "8.5 Récupérer Arbre Complet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre/{{arbreId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre", "{{arbreId}}"]
+            },
+            "description": "Tous les membres peuvent voir l'arbre"
+          }
+        },
+        {
+          "name": "8.6 Arbres de la Famille",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditeur}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/arbre/famille/{{familleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arbre", "famille", "{{familleId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. NOTIFICATIONS",
+      "item": [
+        {
+          "name": "9.1 Toutes les Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "Historique complet des notifications"
+          }
+        },
+        {
+          "name": "9.2 Notifications Non Lues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/non-lues",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "non-lues"]
+            }
+          }
+        },
+        {
+          "name": "9.3 Compter Non Lues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "count"]
+            }
+          }
+        },
+        {
+          "name": "9.4 Marquer comme Lue",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/1/lire",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "1", "lire"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
