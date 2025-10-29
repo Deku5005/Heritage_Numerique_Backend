@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository pour l'entité Famille.
@@ -26,6 +27,14 @@ public interface FamilleRepository extends JpaRepository<Famille, Long> {
      * @return Liste des familles les plus récentes
      */
     List<Famille> findTop10ByOrderByDateCreationDesc();
+
+    /**
+     * Recherche une famille par son nom.
+     * 
+     * @param nom Nom de la famille
+     * @return Optional contenant la famille si trouvée
+     */
+    Optional<Famille> findByNom(String nom);
 }
 
 

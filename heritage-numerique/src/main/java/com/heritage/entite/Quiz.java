@@ -29,7 +29,7 @@ public class Quiz {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_famille", nullable = false)
+    @JoinColumn(name = "id_famille", nullable = true)
     private Famille famille;
 
     @ManyToOne(fetch = FetchType.LAZY)

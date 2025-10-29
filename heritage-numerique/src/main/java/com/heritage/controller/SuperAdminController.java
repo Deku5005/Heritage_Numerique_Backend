@@ -1,10 +1,12 @@
 package com.heritage.controller;
 
-import com.heritage.dto.CategorieDTO;
-import com.heritage.dto.DemandePublicationDTO;
-import com.heritage.dto.StatistiquesDTO;
+import com.heritage.dto.*;
 import com.heritage.service.ContenuService;
 import com.heritage.service.SuperAdminService;
+import com.heritage.service.SuperAdminContenuService;
+import com.heritage.service.SuperAdminQuizService;
+import jakarta.validation.Valid;
+import org.springframework.web.multipart.MultipartFile;
 import com.heritage.util.AuthenticationHelper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,12 +34,18 @@ public class SuperAdminController {
 
     private final SuperAdminService superAdminService;
     private final ContenuService contenuService;
+    private final SuperAdminContenuService superAdminContenuService;
+    private final SuperAdminQuizService superAdminQuizService;
 
     public SuperAdminController(
             SuperAdminService superAdminService,
-            ContenuService contenuService) {
+            ContenuService contenuService,
+            SuperAdminContenuService superAdminContenuService,
+            SuperAdminQuizService superAdminQuizService) {
         this.superAdminService = superAdminService;
         this.contenuService = contenuService;
+        this.superAdminContenuService = superAdminContenuService;
+        this.superAdminQuizService = superAdminQuizService;
     }
 
     /**
@@ -172,6 +180,270 @@ public class SuperAdminController {
         Long valideurId = getUserIdFromAuth(authentication);
         contenuService.rejeterPublication(demandeId, valideurId, commentaire);
         return ResponseEntity.ok("Demande rejetée");
+    }
+
+    /**
+     * Crée un conte public (accessible à tous).
+     * Seul le super-admin peut créer des contenus publics.
+     * 
+     * @param titre Titre du conte
+     * @param description Description du conte
+     * @param texteConte Texte du conte (optionnel si fichier présent)
+     * @param fichierConte Fichier PDF ou document du conte
+     * @param photoConte Photo illustrant le conte
+     * @param lieu Lieu d'origine
+     * @param region Région d'origine
+     * @param authentication Authentification
+     * @return Conte créé
+     */
+    @PostMapping(value = "/contenus-publics/conte", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ContenuDTO> creerContePublic(
+            @RequestParam String titre,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String texteConte,
+            @RequestParam(required = false) MultipartFile fichierConte,
+            @RequestParam(required = false) MultipartFile photoConte,
+            @RequestParam(required = false) String lieu,
+            @RequestParam(required = false) String region,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        
+        ConteJsonRequest request = new ConteJsonRequest();
+        request.setTitre(titre);
+        request.setDescription(description);
+        request.setTexteConte(texteConte);
+        request.setFichierConte(fichierConte);
+        request.setPhotoConte(photoConte);
+        request.setLieu(lieu);
+        request.setRegion(region);
+        
+        ContenuDTO conte = superAdminContenuService.creerContePublic(request, adminId);
+        return new ResponseEntity<>(conte, HttpStatus.CREATED);
+    }
+
+    /**
+     * Crée un proverbe public (accessible à tous).
+     * 
+     * @param titre Titre du proverbe
+     * @param origineProverbe Origine du proverbe
+     * @param texteProverbe Le proverbe lui-même
+     * @param significationProverbe Signification du proverbe
+     * @param photoProverbe Photo illustrant le proverbe
+     * @param lieu Lieu d'origine
+     * @param region Région d'origine
+     * @param authentication Authentification
+     * @return Proverbe créé
+     */
+    @PostMapping(value = "/contenus-publics/proverbe", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ContenuDTO> creerProverbePublic(
+            @RequestParam String titre,
+            @RequestParam String origineProverbe,
+            @RequestParam String texteProverbe,
+            @RequestParam String significationProverbe,
+            @RequestParam(required = false) MultipartFile photoProverbe,
+            @RequestParam(required = false) String lieu,
+            @RequestParam(required = false) String region,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        
+        ProverbeJsonRequest request = new ProverbeJsonRequest();
+        request.setTitre(titre);
+        request.setOrigineProverbe(origineProverbe);
+        request.setTexteProverbe(texteProverbe);
+        request.setSignificationProverbe(significationProverbe);
+        request.setPhotoProverbe(photoProverbe);
+        request.setLieu(lieu);
+        request.setRegion(region);
+        
+        ContenuDTO proverbe = superAdminContenuService.creerProverbePublic(request, adminId);
+        return new ResponseEntity<>(proverbe, HttpStatus.CREATED);
+    }
+
+    /**
+     * Crée une devinette publique (accessible à tous).
+     * 
+     * @param titre Titre de la devinette
+     * @param texteDevinette Le texte de la devinette
+     * @param reponseDevinette La réponse de la devinette
+     * @param photoDevinette Photo illustrant la devinette
+     * @param lieu Lieu d'origine
+     * @param region Région d'origine
+     * @param authentication Authentification
+     * @return Devinette créée
+     */
+    @PostMapping(value = "/contenus-publics/devinette", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ContenuDTO> creerDevinettePublic(
+            @RequestParam String titre,
+            @RequestParam String texteDevinette,
+            @RequestParam String reponseDevinette,
+            @RequestParam(required = false) MultipartFile photoDevinette,
+            @RequestParam(required = false) String lieu,
+            @RequestParam(required = false) String region,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        
+        DevinetteJsonRequest request = new DevinetteJsonRequest();
+        request.setTitre(titre);
+        request.setTexteDevinette(texteDevinette);
+        request.setReponseDevinette(reponseDevinette);
+        request.setPhotoDevinette(photoDevinette);
+        request.setLieu(lieu);
+        request.setRegion(region);
+        
+        ContenuDTO devinette = superAdminContenuService.creerDevinettePublic(request, adminId);
+        return new ResponseEntity<>(devinette, HttpStatus.CREATED);
+    }
+
+    /**
+     * Crée un artisanat public (accessible à tous).
+     * 
+     * @param titre Titre de l'artisanat
+     * @param description Description de l'artisanat
+     * @param photoArtisanat Photo de l'artisanat
+     * @param videoArtisanat Vidéo de l'artisanat
+     * @param lieu Lieu d'origine
+     * @param region Région d'origine
+     * @param authentication Authentification
+     * @return Artisanat créé
+     */
+    @PostMapping(value = "/contenus-publics/artisanat", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ContenuDTO> creerArtisanatPublic(
+            @RequestParam String titre,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) MultipartFile photoArtisanat,
+            @RequestParam(required = false) MultipartFile videoArtisanat,
+            @RequestParam(required = false) String lieu,
+            @RequestParam(required = false) String region,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        
+        ArtisanatJsonRequest request = new ArtisanatJsonRequest();
+        request.setTitre(titre);
+        request.setDescription(description);
+        request.setPhotoArtisanat(photoArtisanat);
+        request.setVideoArtisanat(videoArtisanat);
+        request.setLieu(lieu);
+        request.setRegion(region);
+        
+        ContenuDTO artisanat = superAdminContenuService.creerArtisanatPublic(request, adminId);
+        return new ResponseEntity<>(artisanat, HttpStatus.CREATED);
+    }
+
+    /**
+     * Récupère tous les contenus publics.
+     * Accessible à tous les utilisateurs authentifiés.
+     * 
+     * @return Liste des contenus publics
+     */
+    @GetMapping("/contenus-publics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<List<ContenuDTO>> getAllContenusPublics() {
+        List<ContenuDTO> contenus = superAdminContenuService.getAllContenusPublics();
+        return ResponseEntity.ok(contenus);
+    }
+
+    /**
+     * Crée un quiz public (accessible à tous).
+     * Seul le super-admin peut créer des quiz publics.
+     * 
+     * @param request Requête de création de quiz
+     * @param authentication Authentification
+     * @return Quiz créé
+     */
+    @PostMapping("/quiz-publics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<QuizDTO> creerQuizPublic(
+            @Valid @RequestBody QuizRequest request,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        QuizDTO quiz = superAdminQuizService.creerQuizPublic(request, adminId);
+        return new ResponseEntity<>(quiz, HttpStatus.CREATED);
+    }
+
+    /**
+     * Récupère tous les quiz publics.
+     * Accessible à tous les utilisateurs authentifiés.
+     * 
+     * @return Liste des quiz publics
+     */
+    @GetMapping("/quiz-publics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<List<QuizDTO>> getQuizPublics() {
+        List<QuizDTO> quiz = superAdminQuizService.getQuizPublics();
+        return ResponseEntity.ok(quiz);
+    }
+
+    /**
+     * Récupère un quiz public par son ID.
+     * 
+     * @param id ID du quiz
+     * @return Quiz
+     */
+    @GetMapping("/quiz-publics/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<QuizDTO> getQuizPublicById(@PathVariable Long id) {
+        QuizDTO quiz = superAdminQuizService.getQuizPublicById(id);
+        return ResponseEntity.ok(quiz);
+    }
+
+    /**
+     * Ajoute une question à un quiz public.
+     * 
+     * @param quizId ID du quiz
+     * @param request Requête de création de question
+     * @param authentication Authentification
+     * @return Question créée
+     */
+    @PostMapping("/quiz-publics/{quizId}/questions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Object> ajouterQuestionPublic(
+            @PathVariable Long quizId,
+            @Valid @RequestBody QuestionRequest request,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        Object question = superAdminQuizService.ajouterQuestionPublic(quizId, request, adminId);
+        return new ResponseEntity<>(question, HttpStatus.CREATED);
+    }
+
+    /**
+     * Ajoute une proposition à une question d'un quiz public.
+     * 
+     * @param questionId ID de la question
+     * @param request Requête de création de proposition
+     * @param authentication Authentification
+     * @return Proposition créée
+     */
+    @PostMapping("/quiz-publics/questions/{questionId}/propositions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Object> ajouterPropositionPublic(
+            @PathVariable Long questionId,
+            @Valid @RequestBody PropositionRequest request,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        Object proposition = superAdminQuizService.ajouterPropositionPublic(questionId, request, adminId);
+        return new ResponseEntity<>(proposition, HttpStatus.CREATED);
+    }
+
+    /**
+     * Répond à un quiz public.
+     * Accessible à tous les utilisateurs authentifiés.
+     * 
+     * @param request Requête de réponse au quiz
+     * @param authentication Authentification
+     * @return Résultat du quiz
+     */
+    @PostMapping("/quiz-publics/repondre")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<Object> repondreQuizPublic(
+            @Valid @RequestBody ReponseQuizRequest request,
+            Authentication authentication) {
+        Long utilisateurId = getUserIdFromAuth(authentication);
+        Object resultat = superAdminQuizService.repondreQuizPublic(request, utilisateurId);
+        return ResponseEntity.ok(resultat);
     }
 
     /**

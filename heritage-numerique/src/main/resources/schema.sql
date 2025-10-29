@@ -357,7 +357,7 @@ COMMENT='Notifications envoyées aux utilisateurs';
 INSERT INTO categorie (nom, description, icone) VALUES
 ('Contes', 'Contes familiaux', 'book'),
 ('Artisanats', 'Artisanats familiaux', 'palette'),
-('Musiques', 'Musiques familiaux', 'music'),
+('Devinettes', 'Devinettes familiales', 'question'),
 ('Proverbes', 'Proverbes familiaux', 'quote');
 
 -- =====================================================

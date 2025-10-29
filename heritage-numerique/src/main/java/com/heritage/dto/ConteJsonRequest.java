@@ -1,21 +1,19 @@
 package com.heritage.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConteJsonRequest {
-    @NotNull(message = "L'ID de la famille est obligatoire")
-    private Long idFamille;
+    private Long idFamille; // Optionnel pour contenus publics
 
-    @NotNull(message = "L'ID de la catégorie est obligatoire")
-    private Long idCategorie;
+    private Long idCategorie; // Optionnel, sera cherché par nom
 
     @NotBlank(message = "Le titre est obligatoire")
     @Size(max = 255, message = "Le titre ne peut pas dépasser 255 caractères")
@@ -25,6 +23,8 @@ public class ConteJsonRequest {
     private String description;
 
     private String texteConte;
+    private MultipartFile fichierConte;
+    private MultipartFile photoConte;
 
     private String lieu;
     private String region;
