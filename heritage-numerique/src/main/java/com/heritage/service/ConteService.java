@@ -122,7 +122,7 @@ public class ConteService {
                 .dateCreation(conte.getDateCreation())
                 .statut(conte.getStatut())
                 .urlFichier(conte.getUrlFichier())
-                .urlPhoto(conte.getUrlFichier()) // Pour les contes, urlFichier contient la photo
+                .urlPhoto(conte.getUrlPhoto()) // Pour les contes, urlFichier contient la photo
                 .lieu(conte.getLieu())
                 .region(conte.getRegion())
                 .idFamille(conte.getFamille().getId())
