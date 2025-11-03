@@ -131,7 +131,7 @@ public class ProverbeService {
                 .lienParenteAuteur(lienParenteAuteur)
                 .dateCreation(proverbe.getDateCreation())
                 .statut(proverbe.getStatut())
-                .urlPhoto(proverbe.getUrlFichier())
+                .urlPhoto(proverbe.getUrlPhoto())
                 .lieu(proverbe.getLieu())
                 .region(proverbe.getRegion())
                 .idFamille(proverbe.getFamille().getId())

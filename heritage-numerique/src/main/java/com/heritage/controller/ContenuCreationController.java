@@ -38,11 +38,11 @@ public class ContenuCreationController {
     private void verifierPermissionCreation(Long idFamille) {
         Long userId = AuthenticationHelper.getCurrentUserId();
         String roleMembre = membreFamilleService.getRoleMembre(userId, idFamille);
-        
+
         if (roleMembre == null) {
             throw new RuntimeException("Vous n'êtes pas membre de cette famille");
         }
-        
+
         if (!"ADMIN".equals(roleMembre) && !"EDITEUR".equals(roleMembre)) {
             throw new RuntimeException("Seuls les administrateurs et éditeurs peuvent créer du contenu");
         }
@@ -50,16 +50,13 @@ public class ContenuCreationController {
 
     /**
      * Crée un nouveau contenu selon son type.
-     * 
-     * Endpoint : POST /api/contenus/creer
-     * 
-     * Types supportés :
+     * * Endpoint : POST /api/contenus/creer
+     * * Types supportés :
      * - CONTE : titre, photo, fichier (PDF/TXT) ou texte
      * - ARTISANAT : titre, description, photos, vidéo (optionnelle)
      * - PROVERBE : titre, origine, signification, proverbe, photo
      * - DEVINETTE : titre, devinette, réponse, photo
-     * 
-     * @param request Requête de création de contenu
+     * * @param request Requête de création de contenu
      * @param authentication Authentification de l'utilisateur
      * @return Contenu créé
      */
@@ -71,16 +68,15 @@ public class ContenuCreationController {
 
         verifierPermissionCreation(request.getIdFamille());
         Long auteurId = AuthenticationHelper.getCurrentUserId();
+        // La logique de blocage PDF/TXT est exécutée dans le ContenuCreationService
         Contenu contenu = contenuCreationService.creerContenu(request, auteurId);
         return ResponseEntity.ok(contenu);
     }
 
     /**
      * Crée un conte.
-     * 
-     * Endpoint : POST /api/contenus/conte
-     * 
-     * @param request Requête de création de conte
+     * * Endpoint : POST /api/contenus/conte
+     * * @param request Requête de création de conte
      * @param authentication Authentification de l'utilisateur
      * @return Conte créé
      */
@@ -92,16 +88,15 @@ public class ContenuCreationController {
 
         verifierPermissionCreation(request.getIdFamille());
         Long auteurId = AuthenticationHelper.getCurrentUserId();
+        // La logique de blocage PDF/TXT est exécutée dans le ContenuCreationService
         Contenu contenu = contenuCreationService.creerConte(request, auteurId);
         return ResponseEntity.ok(contenu);
     }
 
     /**
      * Crée un artisanat.
-     * 
-     * Endpoint : POST /api/contenus/artisanat
-     * 
-     * @param request Requête de création d'artisanat
+     * * Endpoint : POST /api/contenus/artisanat
+     * * @param request Requête de création d'artisanat
      * @param authentication Authentification de l'utilisateur
      * @return Artisanat créé
      */
@@ -110,19 +105,18 @@ public class ContenuCreationController {
     public ResponseEntity<Contenu> creerArtisanat(
             @Valid @ModelAttribute ArtisanatRequest request,
             Authentication authentication) {
-        
+
         verifierPermissionCreation(request.getIdFamille());
         Long auteurId = AuthenticationHelper.getCurrentUserId();
+        // La logique de blocage PDF/TXT est exécutée dans le ContenuCreationService
         Contenu contenu = contenuCreationService.creerArtisanat(request, auteurId);
         return ResponseEntity.ok(contenu);
     }
 
     /**
      * Crée un proverbe.
-     * 
-     * Endpoint : POST /api/contenus/proverbe
-     * 
-     * @param request Requête de création de proverbe
+     * * Endpoint : POST /api/contenus/proverbe
+     * * @param request Requête de création de proverbe
      * @param authentication Authentification de l'utilisateur
      * @return Proverbe créé
      */
@@ -131,19 +125,18 @@ public class ContenuCreationController {
     public ResponseEntity<Contenu> creerProverbe(
             @Valid @ModelAttribute ProverbeRequest request,
             Authentication authentication) {
-        
+
         verifierPermissionCreation(request.getIdFamille());
         Long auteurId = AuthenticationHelper.getCurrentUserId();
+        // La logique de blocage PDF/TXT est exécutée dans le ContenuCreationService
         Contenu contenu = contenuCreationService.creerProverbe(request, auteurId);
         return ResponseEntity.ok(contenu);
     }
 
     /**
      * Crée une devinette.
-     * 
-     * Endpoint : POST /api/contenus/devinette
-     * 
-     * @param request Requête de création de devinette
+     * * Endpoint : POST /api/contenus/devinette
+     * * @param request Requête de création de devinette
      * @param authentication Authentification de l'utilisateur
      * @return Devinette créée
      */
@@ -152,9 +145,10 @@ public class ContenuCreationController {
     public ResponseEntity<Contenu> creerDevinette(
             @Valid @ModelAttribute DevinetteRequest request,
             Authentication authentication) {
-        
+
         verifierPermissionCreation(request.getIdFamille());
         Long auteurId = AuthenticationHelper.getCurrentUserId();
+        // La logique de blocage PDF/TXT est exécutée dans le ContenuCreationService
         Contenu contenu = contenuCreationService.creerDevinette(request, auteurId);
         return ResponseEntity.ok(contenu);
     }

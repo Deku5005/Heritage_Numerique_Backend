@@ -127,7 +127,7 @@ public class DevinetteService {
                 .lienParenteAuteur(lienParenteAuteur)
                 .dateCreation(devinette.getDateCreation())
                 .statut(devinette.getStatut())
-                .urlPhoto(devinette.getUrlFichier())
+                .urlPhoto(devinette.getUrlPhoto())
                 .lieu(devinette.getLieu())
                 .region(devinette.getRegion())
                 .idFamille(devinette.getFamille().getId())
