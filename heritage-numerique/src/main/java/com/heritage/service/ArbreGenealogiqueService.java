@@ -13,10 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +22,7 @@ import java.util.stream.Collectors;
 /**
  * Service pour la gestion de l'arbre généalogique de famille.
  * Chaque famille a un seul arbre généalogique.
+ * Adapté pour utiliser FileStorageService tout en conservant le format de chemin DB souhaité (court).
  */
 @Service
 public class ArbreGenealogiqueService {
@@ -36,25 +33,28 @@ public class ArbreGenealogiqueService {
     private final MembreFamilleRepository membreFamilleRepository;
     private final UtilisateurRepository utilisateurRepository;
 
-    @Value("${app.upload.path:uploads}")
-    private String uploadPath;
+    // 🔑 Injection du service de stockage centralisé
+    private final FileStorageService fileStorageService;
+
+    // Note: La variable @Value("${app.upload.path:uploads}") et la méthode uploadFile locale sont supprimées.
 
     public ArbreGenealogiqueService(ArbreGenealogiqueRepository arbreGenealogiqueRepository,
-                                   MembreArbreRepository membreArbreRepository,
-                                   FamilleRepository familleRepository,
-                                   MembreFamilleRepository membreFamilleRepository,
-                                   UtilisateurRepository utilisateurRepository) {
+                                    MembreArbreRepository membreArbreRepository,
+                                    FamilleRepository familleRepository,
+                                    MembreFamilleRepository membreFamilleRepository,
+                                    UtilisateurRepository utilisateurRepository,
+                                    FileStorageService fileStorageService) { // Injection du service
         this.arbreGenealogiqueRepository = arbreGenealogiqueRepository;
         this.membreArbreRepository = membreArbreRepository;
         this.familleRepository = familleRepository;
         this.membreFamilleRepository = membreFamilleRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.fileStorageService = fileStorageService; // Initialisation
     }
 
     /**
      * Récupère l'arbre généalogique d'une famille avec tous ses membres.
-     * 
-     * @param familleId ID de la famille
+     * * @param familleId ID de la famille
      * @return Arbre généalogique complet
      */
     @Transactional(readOnly = true)
@@ -73,7 +73,7 @@ public class ArbreGenealogiqueService {
             arbre.setFamille(famille);
             arbre.setNom("Arbre généalogique de " + famille.getNom());
             arbre.setDescription("Arbre généalogique de la famille " + famille.getNom());
-            
+
             // Définir le créateur de l'arbre (utiliser le premier membre ADMIN de la famille)
             Utilisateur createur = famille.getMembres().stream()
                     .filter(m -> m.getRoleFamille() == RoleFamille.ADMIN)
@@ -81,7 +81,7 @@ public class ArbreGenealogiqueService {
                     .findFirst()
                     .orElse(famille.getMembres().get(0).getUtilisateur()); // Fallback sur le premier membre
             arbre.setCreateur(createur);
-            
+
             arbre = arbreGenealogiqueRepository.save(arbre);
         }
 
@@ -104,8 +104,7 @@ public class ArbreGenealogiqueService {
 
     /**
      * Ajoute un membre à l'arbre généalogique d'une famille.
-     * 
-     * @param request Requête d'ajout de membre
+     * * @param request Requête d'ajout de membre
      * @param auteurId ID de l'utilisateur qui ajoute le membre
      * @return DTO du membre ajouté
      */
@@ -134,19 +133,19 @@ public class ArbreGenealogiqueService {
             arbre.setFamille(famille);
             arbre.setNom("Arbre généalogique de " + famille.getNom());
             arbre.setDescription("Arbre généalogique de la famille " + famille.getNom());
-            
+
             // Définir le créateur de l'arbre
             Utilisateur createur = utilisateurRepository.findById(auteurId)
                     .orElseThrow(() -> new NotFoundException("Utilisateur non trouvé"));
             arbre.setCreateur(createur);
-            
+
             arbre = arbreGenealogiqueRepository.save(arbre);
         }
 
         // 4. Créer le membre de l'arbre
         MembreArbre membreArbre = new MembreArbre();
         membreArbre.setArbre(arbre);
-        
+
         // Séparer le nom complet en nom et prénom
         String nomComplet = request.getNomComplet();
         String[] parties = nomComplet.split(" ", 2);
@@ -167,9 +166,14 @@ public class ArbreGenealogiqueService {
         // 5. Upload de la photo si fournie
         if (request.getPhoto() != null && !request.getPhoto().isEmpty()) {
             try {
-                // 🔑 CHANGEMENT DE "photos" À "images"
-                String photoPath = uploadFile(request.getPhoto(), "images");
-                membreArbre.setPhotoUrl(photoPath);
+                // 1. Appel du service de stockage centralisé (retourne /uploads/images/uuid.jpg)
+                String fullPath = fileStorageService.storeFile(request.getPhoto(), "images");
+
+                // 2. 🔑 Correction : Retirer le préfixe '/uploads/' pour l'enregistrement en DB
+                // Ceci assure le format 'images/uuid.jpg' pour l'affichage Flutter
+                String relativePath = fullPath.replace("/uploads/", "");
+
+                membreArbre.setPhotoUrl(relativePath);
             } catch (IOException e) {
                 throw new BadRequestException("Erreur lors de l'upload de la photo : " + e.getMessage());
             }
@@ -188,9 +192,6 @@ public class ArbreGenealogiqueService {
             membreArbre.setMere(parent2);
         }
 
-        // Note: Le champ conjoint n'existe pas dans l'entité MembreArbre
-        // Seuls les champs pere, mere et utilisateurLie sont disponibles
-
         // 7. Sauvegarder le membre
         membreArbre = membreArbreRepository.save(membreArbre);
 
@@ -200,15 +201,14 @@ public class ArbreGenealogiqueService {
 
     /**
      * Récupère un membre spécifique de l'arbre généalogique.
-     * 
-     * @param membreId ID du membre
+     * * @param membreId ID du membre
      * @return DTO du membre
      */
     @Transactional(readOnly = true)
     public MembreArbreDTO getMembreArbreById(Long membreId) {
         MembreArbre membre = membreArbreRepository.findById(membreId)
                 .orElseThrow(() -> new NotFoundException("Membre de l'arbre non trouvé"));
-        
+
         return convertToMembreArbreDTO(membre);
     }
 
@@ -259,11 +259,11 @@ public class ArbreGenealogiqueService {
 
         // Formats supportés
         String[] formats = {
-            "yyyy-MM-dd",      // 1990-05-12
-            "dd/MM/yyyy",      // 12/05/1990
-            "dd-MM-yyyy",      // 12-05-1990
-            "MM/dd/yyyy",      // 05/12/1990
-            "yyyy/MM/dd"       // 1990/05/12
+                "yyyy-MM-dd",      // 1990-05-12
+                "dd/MM/yyyy",      // 12/05/1990
+                "dd-MM/yyyy",      // 12-05-1990
+                "MM/dd/yyyy",      // 05/12/1990
+                "yyyy/MM/dd"       // 1990/05/12
         };
 
         for (String format : formats) {
@@ -276,27 +276,5 @@ public class ArbreGenealogiqueService {
         }
 
         throw new BadRequestException("Format de date non supporté. Utilisez: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY ou YYYY/MM/DD");
-    }
-
-    /**
-     * Upload un fichier et retourne son chemin.
-     */
-    private String uploadFile(MultipartFile file, String subfolder) throws IOException {
-        // Créer le dossier s'il n'existe pas
-        Path uploadDir = Paths.get(uploadPath, subfolder);
-        if (!Files.exists(uploadDir)) {
-            Files.createDirectories(uploadDir);
-        }
-
-        // Générer un nom de fichier unique
-        String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String filename = UUID.randomUUID().toString() + extension;
-
-        // Sauvegarder le fichier
-        Path filePath = uploadDir.resolve(filename);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        return subfolder + "/" + filename;
     }
 }

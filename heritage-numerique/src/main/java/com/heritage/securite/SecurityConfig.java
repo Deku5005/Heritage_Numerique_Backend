@@ -76,6 +76,9 @@ public class SecurityConfig {
                         // Endpoints publics (authentification)
                         .requestMatchers("/api/auth/**").permitAll()
 
+
+                        .requestMatchers("/images/**").permitAll()
+
                         // ✅ AJOUT : Autoriser l'accès non authentifié aux fichiers statiques (images, PDF)
                         .requestMatchers("/uploads/**").permitAll()
 
