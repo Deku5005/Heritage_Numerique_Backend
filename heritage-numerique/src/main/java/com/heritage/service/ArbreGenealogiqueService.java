@@ -167,7 +167,8 @@ public class ArbreGenealogiqueService {
         // 5. Upload de la photo si fournie
         if (request.getPhoto() != null && !request.getPhoto().isEmpty()) {
             try {
-                String photoPath = uploadFile(request.getPhoto(), "photos");
+                // 🔑 CHANGEMENT DE "photos" À "images"
+                String photoPath = uploadFile(request.getPhoto(), "images");
                 membreArbre.setPhotoUrl(photoPath);
             } catch (IOException e) {
                 throw new BadRequestException("Erreur lors de l'upload de la photo : " + e.getMessage());
