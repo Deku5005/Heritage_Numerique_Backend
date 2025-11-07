@@ -76,6 +76,8 @@ public class SecurityConfig {
                         // Endpoints publics (authentification)
                         .requestMatchers("/api/auth/**").permitAll()
 
+                        // ✅ AJOUT : Autoriser l'accès public aux contenus publics (contes, artisanats, proverbes, devinettes)
+                        .requestMatchers("/api/public/**").permitAll()
 
                         .requestMatchers("/images/**").permitAll()
 

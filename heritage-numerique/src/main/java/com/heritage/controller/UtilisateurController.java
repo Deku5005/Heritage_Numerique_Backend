@@ -1,5 +1,6 @@
 package com.heritage.controller;
 
+import com.heritage.dto.UpdateUtilisateurRequest;
 import com.heritage.dto.UtilisateurAvecRoleFamilleDTO;
 import com.heritage.dto.UtilisateurDTO;
 import com.heritage.service.UtilisateurService;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +22,11 @@ import org.springframework.web.bind.annotation.*;
  * - GET /api/utilisateurs/{id} : Récupère les informations d'un utilisateur par son ID
  * - GET /api/utilisateurs/email/{email} : Récupère les informations d'un utilisateur par son email
  * - GET /api/utilisateurs/{utilisateurId}/famille/{familleId} : Récupère un utilisateur avec son rôle dans une famille spécifique
+ * - PUT /api/utilisateurs/{id} : Met à jour les informations d'un utilisateur
  * 
  * Sécurité :
- * - Le mot de passe n'est JAMAIS retourné dans les réponses (DTO sans mot de passe)
+ * - Le mot de passe n'est JAMAIS retourné dans les réponses GET (DTO sans mot de passe)
+ * - Le mot de passe peut être modifié via PUT (hashé avec BCrypt)
  */
 @RestController
 @RequestMapping("/api/utilisateurs")
@@ -42,11 +46,11 @@ public class UtilisateurController {
      * URL : GET /api/utilisateurs/{id}
      * 
      * @param id ID de l'utilisateur
-     * @return UtilisateurDTO contenant toutes les informations (sauf le mot de passe) + les familles avec leurs rôles
+     * @return UtilisateurDTO contenant toutes les informations (sauf le mot de passe)
      */
     @Operation(
         summary = "Récupérer un utilisateur par ID",
-        description = "Retourne toutes les informations d'un utilisateur (sauf le mot de passe) incluant ses familles avec les rôles (ADMIN, EDITEUR, LECTEUR) et liens de parenté"
+        description = "Retourne toutes les informations d'un utilisateur (sauf le mot de passe)"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -77,11 +81,11 @@ public class UtilisateurController {
      * URL : GET /api/utilisateurs/email/{email}
      * 
      * @param email Email de l'utilisateur
-     * @return UtilisateurDTO contenant toutes les informations (sauf le mot de passe) + les familles avec leurs rôles
+     * @return UtilisateurDTO contenant toutes les informations (sauf le mot de passe)
      */
     @Operation(
         summary = "Récupérer un utilisateur par email",
-        description = "Retourne toutes les informations d'un utilisateur (sauf le mot de passe) incluant ses familles avec les rôles (ADMIN, EDITEUR, LECTEUR) et liens de parenté"
+        description = "Retourne toutes les informations d'un utilisateur (sauf le mot de passe)"
     )
     @ApiResponses(value = {
         @ApiResponse(
@@ -141,6 +145,50 @@ public class UtilisateurController {
             @Parameter(description = "ID de la famille", required = true, example = "1")
             @PathVariable Long familleId) {
         UtilisateurAvecRoleFamilleDTO utilisateur = utilisateurService.getUserWithRoleInFamille(utilisateurId, familleId);
+        return ResponseEntity.ok(utilisateur);
+    }
+
+    /**
+     * Met à jour les informations d'un utilisateur.
+     * 
+     * URL : PUT /api/utilisateurs/{id}
+     * 
+     * Tous les champs sont optionnels. Seuls les champs fournis seront mis à jour.
+     * 
+     * @param id ID de l'utilisateur
+     * @param request Données de mise à jour
+     * @return UtilisateurDTO contenant les informations mises à jour (sauf le mot de passe)
+     */
+    @Operation(
+        summary = "Modifier les informations d'un utilisateur",
+        description = "Met à jour les informations d'un utilisateur. Tous les champs sont optionnels. Le mot de passe peut être modifié (il sera hashé). Le mot de passe n'est jamais retourné dans la réponse."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Utilisateur modifié avec succès",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = UtilisateurDTO.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Utilisateur non trouvé",
+            content = @Content
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Données invalides (email déjà utilisé, validation échouée)",
+            content = @Content
+        )
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<UtilisateurDTO> updateUtilisateur(
+            @Parameter(description = "ID de l'utilisateur", required = true, example = "1")
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUtilisateurRequest request) {
+        UtilisateurDTO utilisateur = utilisateurService.updateUtilisateur(id, request);
         return ResponseEntity.ok(utilisateur);
     }
 }

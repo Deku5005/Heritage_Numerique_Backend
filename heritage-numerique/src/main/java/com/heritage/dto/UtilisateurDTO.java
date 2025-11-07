@@ -6,12 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * DTO pour les informations publiques d'un utilisateur.
  * Ne contient JAMAIS le mot de passe pour des raisons de sécurité.
- * Inclut les familles auxquelles appartient l'utilisateur avec leurs rôles.
  */
 @Data
 @Builder
@@ -28,7 +26,7 @@ public class UtilisateurDTO {
     private String role;
     private Boolean actif;
     private LocalDateTime dateCreation;
-    private List<FamilleUtilisateurDTO> familles; // Liste des familles avec les rôles
+    private LocalDateTime dateModification;
 }
 
 
