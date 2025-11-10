@@ -82,6 +82,12 @@ public class SecurityConfig {
                         // ✅ AJOUT : Autoriser l'accès aux contenus publics avec quiz
                         .requestMatchers("/api/contenus/public/**").permitAll()
 
+                        // ✅ AJOUT : Autoriser l'accès public aux contes, artisanats, proverbes et devinettes
+                        .requestMatchers("/api/superadmin/contenus-publics/contes").permitAll()
+                        .requestMatchers("/api/superadmin/contenus-publics/artisanats").permitAll()
+                        .requestMatchers("/api/superadmin/contenus-publics/proverbes").permitAll()
+                        .requestMatchers("/api/superadmin/contenus-publics/devinettes").permitAll()
+
                         .requestMatchers("/images/**").permitAll()
 
                         // ✅ AJOUT : Autoriser l'accès non authentifié aux fichiers statiques (images, PDF)

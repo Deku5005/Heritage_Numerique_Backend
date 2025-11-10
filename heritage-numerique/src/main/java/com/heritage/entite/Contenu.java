@@ -75,8 +75,21 @@ public class Contenu {
     @Column(name = "region", length = 100)
     private String region;
 
+
     @Column(name = "statut", nullable = false, length = 20)
     private String statut = "BROUILLON";
+
+
+    @Column(name = "texte_proverbe", columnDefinition = "TEXT")
+    private String texteProverbe;
+
+
+    @Column(name = "signification_proverbe", columnDefinition = "TEXT")
+    private String significationProverbe;
+
+
+    @Column(name = "origine_proverbe", length = 255)
+    private String origineProverbe;
 
     @CreationTimestamp
     @Column(name = "date_creation", nullable = false, updatable = false)

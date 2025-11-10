@@ -255,6 +255,74 @@ public class SuperAdminContenuService {
     }
 
     /**
+     * Récupère tous les contes publics.
+     */
+    @Transactional(readOnly = true)
+    public List<ContenuDTO> getAllContes() {
+        Famille famillePublic = getFamillePublic();
+        
+        List<Contenu> contes = contenuRepository.findByFamilleIdAndStatut(famillePublic.getId(), "PUBLIE")
+                .stream()
+                .filter(c -> "CONTE".equals(c.getTypeContenu()))
+                .collect(Collectors.toList());
+        
+        return contes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère tous les artisanats publics.
+     */
+    @Transactional(readOnly = true)
+    public List<ContenuDTO> getAllArtisanats() {
+        Famille famillePublic = getFamillePublic();
+        
+        List<Contenu> artisanats = contenuRepository.findByFamilleIdAndStatut(famillePublic.getId(), "PUBLIE")
+                .stream()
+                .filter(c -> "ARTISANAT".equals(c.getTypeContenu()))
+                .collect(Collectors.toList());
+        
+        return artisanats.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère tous les proverbes publics.
+     */
+    @Transactional(readOnly = true)
+    public List<ContenuDTO> getAllProverbes() {
+        Famille famillePublic = getFamillePublic();
+        
+        List<Contenu> proverbes = contenuRepository.findByFamilleIdAndStatut(famillePublic.getId(), "PUBLIE")
+                .stream()
+                .filter(c -> "PROVERBE".equals(c.getTypeContenu()))
+                .collect(Collectors.toList());
+        
+        return proverbes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère toutes les devinettes publiques.
+     */
+    @Transactional(readOnly = true)
+    public List<ContenuDTO> getAllDevinettes() {
+        Famille famillePublic = getFamillePublic();
+        
+        List<Contenu> devinettes = contenuRepository.findByFamilleIdAndStatut(famillePublic.getId(), "PUBLIE")
+                .stream()
+                .filter(c -> "DEVINETTE".equals(c.getTypeContenu()))
+                .collect(Collectors.toList());
+        
+        return devinettes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Sauvegarde un fichier uploadé et retourne l'URL.
      */
     private String sauvegarderFichier(MultipartFile fichier, String type) {
@@ -293,7 +361,16 @@ public class SuperAdminContenuService {
         dto.setStatut(contenu.getStatut());
         dto.setDateCreation(contenu.getDateCreation());
         dto.setDateModification(contenu.getDateModification());
+
+
+        // ✅ Ajout des champs spécifiques au proverbe
+        dto.setTexteProverbe(contenu.getTexteProverbe());
+        dto.setSignificationProverbe(contenu.getSignificationProverbe());
+        dto.setOrigineProverbe(contenu.getOrigineProverbe());
+
+
         return dto;
     }
+
 }
 

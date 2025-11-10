@@ -27,4 +27,7 @@ public class ContenuGlobalDTO {
     private String emailCreateur;
     private String nomFamille;
     private String regionFamille;
+    private String texteProverbe;
+    private String significationProverbe;
+    private String origineProverbe;
 }

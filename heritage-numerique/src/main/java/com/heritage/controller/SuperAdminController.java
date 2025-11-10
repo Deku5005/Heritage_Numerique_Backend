@@ -347,6 +347,54 @@ public class SuperAdminController {
     }
 
     /**
+     * Récupère tous les contes publics avec toutes leurs informations.
+     * Accessible à tout le monde sans authentification.
+     * 
+     * @return Liste des contes publics
+     */
+    @GetMapping("/contenus-publics/contes")
+    public ResponseEntity<List<ContenuDTO>> getAllContes() {
+        List<ContenuDTO> contes = superAdminContenuService.getAllContes();
+        return ResponseEntity.ok(contes);
+    }
+
+    /**
+     * Récupère tous les artisanats publics avec toutes leurs informations.
+     * Accessible à tout le monde sans authentification.
+     * 
+     * @return Liste des artisanats publics
+     */
+    @GetMapping("/contenus-publics/artisanats")
+    public ResponseEntity<List<ContenuDTO>> getAllArtisanats() {
+        List<ContenuDTO> artisanats = superAdminContenuService.getAllArtisanats();
+        return ResponseEntity.ok(artisanats);
+    }
+
+    /**
+     * Récupère tous les proverbes publics avec toutes leurs informations.
+     * Accessible à tout le monde sans authentification.
+     * 
+     * @return Liste des proverbes publics
+     */
+    @GetMapping("/contenus-publics/proverbes")
+    public ResponseEntity<List<ContenuDTO>> getAllProverbes() {
+        List<ContenuDTO> proverbes = superAdminContenuService.getAllProverbes();
+        return ResponseEntity.ok(proverbes);
+    }
+
+    /**
+     * Récupère toutes les devinettes publiques avec toutes leurs informations.
+     * Accessible à tout le monde sans authentification.
+     * 
+     * @return Liste des devinettes publiques
+     */
+    @GetMapping("/contenus-publics/devinettes")
+    public ResponseEntity<List<ContenuDTO>> getAllDevinettes() {
+        List<ContenuDTO> devinettes = superAdminContenuService.getAllDevinettes();
+        return ResponseEntity.ok(devinettes);
+    }
+
+    /**
      * Crée un quiz public (accessible à tous).
      * Seul le super-admin peut créer des quiz publics.
      * 
