@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ContenuGlobalDTO {
-    
+
     private Long id;
     private String titre;
     private String description;
@@ -27,4 +27,10 @@ public class ContenuGlobalDTO {
     private String emailCreateur;
     private String nomFamille;
     private String regionFamille;
+    private String thumbnailUrl;
+    private String texteProverbe;
+    private String significationProverbe;
+    private String origineProverbe;
+    private String photoProverbe;
+
 }

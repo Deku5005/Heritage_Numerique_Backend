@@ -86,6 +86,15 @@ public class Contenu {
     @Column(name = "date_modification", nullable = false)
     private LocalDateTime dateModification;
 
+    @Column(name = "texte_proverbe", columnDefinition = "TEXT")
+    private String texteProverbe;
+
+    @Column(name = "signification_proverbe", columnDefinition = "TEXT")
+    private String significationProverbe;
+
+    @Column(name = "origine_proverbe", length = 255)
+    private String origineProverbe;
+
     // Note: Les traductions sont maintenant gérées via l'API HuggingFace NLLB-200
     // Plus besoin de l'entité TraductionContenu
 

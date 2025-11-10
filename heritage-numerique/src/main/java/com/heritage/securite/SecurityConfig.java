@@ -3,38 +3,31 @@ package com.heritage.securite;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+// ... autres imports
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-/**
- * Configuration de sécurité Spring Security.
- * 
- * Responsabilités :
- * - Configurer l'authentification JWT
- * - Définir les endpoints publics et protégés
- * - Configurer le PasswordEncoder (BCrypt)
- * - Désactiver CSRF pour les API REST
- * - Configurer la gestion des sessions (STATELESS)
- * 
- * Sécurité :
- * - CSRF désactivé : Pour les API REST avec JWT, CSRF n'est pas nécessaire car
- *   les tokens JWT ne sont pas stockés dans les cookies (pas de vulnérabilité CSRF)
- * - Sessions STATELESS : Pas de session HTTP, authentification par JWT à chaque requête
- * - BCrypt pour le hashage des mots de passe (algorithme sécurisé avec salt automatique)
- * - JWT Filter ajouté avant UsernamePasswordAuthenticationFilter
- */
+import java.util.Arrays;
+import java.util.List;
+import static org.springframework.http.HttpMethod.OPTIONS;
+
+
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Pour @PreAuthorize, @Secured, etc.
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -48,70 +41,58 @@ public class SecurityConfig {
     }
 
     /**
-     * Configuration de la chaîne de filtres de sécurité.
-     * 
-     * Endpoints publics :
-     * - /api/auth/** : inscription et connexion (pas d'authentification requise)
-     * - /swagger-ui/** : documentation Swagger (optionnel, pour dev/test)
-     * - /v3/api-docs/** : documentation OpenAPI
-     * 
-     * Endpoints protégés :
-     * - Tous les autres endpoints nécessitent une authentification
-     * 
-     * CSRF désactivé :
-     * Pour les API REST avec authentification JWT, CSRF n'est pas nécessaire.
-     * Les tokens JWT sont envoyés dans le header Authorization (pas dans un cookie),
-     * donc il n'y a pas de risque d'attaque CSRF (Cross-Site Request Forgery).
-     * 
-     * Sessions STATELESS :
-     * Pas de session HTTP côté serveur, l'authentification se fait uniquement via JWT.
-     * Chaque requête doit inclure le token JWT.
+     * Définit les règles de partage de ressources pour le navigateur.
      */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Désactiver CSRF (pas nécessaire pour API REST avec JWT)
-            .csrf(csrf -> csrf.disable())
-            
-            // Configuration CORS
-            .cors(cors -> cors.disable())
-            
-            // Configuration des autorisations
-            .authorizeHttpRequests(auth -> auth
-                // Endpoints publics (authentification)
-                .requestMatchers("/api/auth/**").permitAll()
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // Endpoints publics (authentification)
+                        .requestMatchers("/api/auth/**").permitAll()
 
-                
-                // Documentation Swagger (optionnel, à sécuriser en production)
-                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                
-                // Endpoints admin (réservés aux ROLE_ADMIN)
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
-                // Tous les autres endpoints nécessitent une authentification
-                .anyRequest().authenticated()
-            )
-            
-            // Gestion des sessions : STATELESS (pas de session HTTP)
-            // L'authentification se fait uniquement via JWT
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            
-            // Provider d'authentification
-            .authenticationProvider(authenticationProvider())
-            
-            // Ajouter le filtre JWT avant UsernamePasswordAuthenticationFilter
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        // ✨ AJOUT CRUCIAL : Autoriser l'accès non authentifié aux images uploadées
+                        .requestMatchers("/uploads/**").permitAll()
+
+                        // Autoriser toutes les requêtes OPTIONS (preflight)
+                        .requestMatchers(OPTIONS, "/**").permitAll()
+
+                        // Documentation Swagger
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+
+                        // Endpoints admin
+                        .requestMatchers("/api/superadmin/**").hasRole("ADMIN")
+
+                        // Endpoints admin
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Tous les autres endpoints nécessitent une authentification
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // ... (reste de la chaîne de filtres)
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Provider d'authentification personnalisé.
-     * Utilise CustomUserDetailsService pour charger les utilisateurs
-     * et BCryptPasswordEncoder pour vérifier les mots de passe.
-     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -120,36 +101,13 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * AuthenticationManager pour l'authentification programmatique.
-     * Utilisé dans AuthService pour la connexion.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * PasswordEncoder avec BCrypt.
-     * 
-     * Sécurité :
-     * - BCrypt est un algorithme de hashage sécurisé pour les mots de passe
-     * - Génère automatiquement un salt unique pour chaque mot de passe
-     * - Résistant aux attaques par rainbow tables et brute force
-     * - Paramètre de coût (work factor) : 10 par défaut (2^10 itérations)
-     * 
-     * Pourquoi BCrypt :
-     * - Spécialement conçu pour hasher des mots de passe (lent par design)
-     * - Salt automatique (pas besoin de le gérer manuellement)
-     * - Résistant aux attaques GPU (algorithme adaptatif)
-     * - Standard de l'industrie pour le stockage de mots de passe
-     * 
-     * Alternative : Argon2 (encore plus moderne, mais BCrypt est largement accepté)
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
-
-

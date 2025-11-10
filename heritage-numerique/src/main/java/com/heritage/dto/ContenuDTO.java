@@ -36,6 +36,11 @@ public class ContenuDTO {
     private String statut;
     private LocalDateTime dateCreation;
     private LocalDateTime dateModification;
+
+    private String texteProverbe;
+    private String significationProverbe;
+    private String origineProverbe;
+    private String photoProverbe;
 }
 
 
