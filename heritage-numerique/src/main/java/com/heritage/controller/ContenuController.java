@@ -1,5 +1,6 @@
 package com.heritage.controller;
 
+import com.heritage.dto.ContenuAvecQuizDTO;
 import com.heritage.dto.ContenuDTO;
 import com.heritage.dto.ContenuRequest;
 import com.heritage.dto.DemandePublicationDTO;
@@ -25,6 +26,7 @@ import java.util.List;
  * - GET /api/contenus/publics : récupérer les contenus publics (tous)
  * - GET /api/contenus/famille/{familleId} : récupérer les contenus privés (membres uniquement)
  * - GET /api/contenus/demandes/famille/{familleId} : récupérer toutes les demandes de publication d'une famille (membres uniquement)
+ * - GET /api/contenus/public/{contenuId}/avec-quiz : récupérer un contenu publique avec son quiz et ses questions (tous)
  */
 @RestController
 @RequestMapping("/api/contenus")
@@ -166,6 +168,20 @@ public class ContenuController {
         Long utilisateurId = getUserIdFromAuth(authentication);
         List<DemandePublicationDTO> demandes = contenuService.getDemandesPublicationFamille(familleId, utilisateurId);
         return ResponseEntity.ok(demandes);
+    }
+
+    /**
+     * Récupère un contenu publique (conte) avec son quiz et ses questions (si disponible).
+     * Accessible par tous (pas d'authentification requise pour les contenus publics).
+     * Retourne le contenu complet avec le titre du quiz et toutes ses questions avec leurs propositions.
+     * 
+     * @param contenuId ID du contenu publique
+     * @return Contenu avec son quiz complet
+     */
+    @GetMapping("/public/{contenuId}/avec-quiz")
+    public ResponseEntity<ContenuAvecQuizDTO> getContenuPublicAvecQuiz(@PathVariable Long contenuId) {
+        ContenuAvecQuizDTO contenu = contenuService.getContenuPublicAvecQuiz(contenuId);
+        return ResponseEntity.ok(contenu);
     }
 
     /**

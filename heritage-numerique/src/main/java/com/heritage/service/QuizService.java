@@ -155,6 +155,7 @@ public class QuizService {
         // 4. Créer le quiz
         Quiz quiz = new Quiz();
         quiz.setFamille(contenu.getFamille());
+        quiz.setContenu(contenu); // Lier le quiz au contenu
         quiz.setCreateur(createur);
         quiz.setTitre(request.getTitre());
         quiz.setDescription(request.getDescription());

@@ -33,6 +33,10 @@ public class Quiz {
     private Famille famille;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_contenu", nullable = true)
+    private Contenu contenu;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_createur", nullable = false)
     private Utilisateur createur;
 

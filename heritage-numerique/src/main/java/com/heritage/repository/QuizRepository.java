@@ -2,6 +2,8 @@ package com.heritage.repository;
 
 import com.heritage.entite.Quiz;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -37,6 +39,25 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
      * @return Liste des quiz
      */
     List<Quiz> findByCreateurId(Long createurId);
+
+    /**
+     * Recherche le quiz associé à un contenu.
+     * 
+     * @param contenuId ID du contenu
+     * @return Quiz optionnel
+     */
+    Optional<Quiz> findByContenuId(Long contenuId);
+
+    /**
+     * Recherche le quiz associé à un contenu avec chargement EAGER des questions.
+     * 
+     * @param contenuId ID du contenu
+     * @return Quiz optionnel avec questions chargées
+     */
+    @Query("SELECT DISTINCT q FROM Quiz q " +
+           "LEFT JOIN FETCH q.questions " +
+           "WHERE q.contenu.id = :contenuId")
+    Optional<Quiz> findByContenuIdWithQuestionsAndPropositions(@Param("contenuId") Long contenuId);
 
 
 }

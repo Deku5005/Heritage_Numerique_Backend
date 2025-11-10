@@ -132,4 +132,27 @@ public class QuizContenuController {
         ScoreUtilisateurDTO score = quizContenuService.getScoreUtilisateur(utilisateurId);
         return ResponseEntity.ok(score);
     }
+
+    /**
+     * Lie un quiz existant à un contenu.
+     * Endpoint admin pour migrer les anciens quiz.
+     * 
+     * Endpoint : PUT /api/quiz-contenu/{quizId}/lier-contenu/{contenuId}
+     * 
+     * @param quizId ID du quiz à lier
+     * @param contenuId ID du contenu
+     * @param authentication Authentification de l'utilisateur
+     * @return Message de confirmation
+     */
+    @PutMapping("/{quizId}/lier-contenu/{contenuId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> lierQuizAContenu(
+            @PathVariable Long quizId,
+            @PathVariable Long contenuId,
+            Authentication authentication) {
+        
+        Long utilisateurId = AuthenticationHelper.getCurrentUserId();
+        quizContenuService.lierQuizAContenu(quizId, contenuId, utilisateurId);
+        return ResponseEntity.ok("Quiz lié au contenu avec succès");
+    }
 }

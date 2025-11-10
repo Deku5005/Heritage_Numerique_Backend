@@ -205,6 +205,7 @@ COMMENT='Workflow de validation des publications';
 CREATE TABLE quiz (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     id_famille BIGINT NOT NULL,
+    id_contenu BIGINT COMMENT 'Contenu associé au quiz (optionnel)',
     id_createur BIGINT NOT NULL,
     titre VARCHAR(255) NOT NULL,
     description TEXT,
@@ -214,8 +215,10 @@ CREATE TABLE quiz (
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_famille) REFERENCES famille(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_contenu) REFERENCES contenu(id) ON DELETE CASCADE,
     FOREIGN KEY (id_createur) REFERENCES utilisateur(id) ON DELETE RESTRICT,
     INDEX idx_famille (id_famille),
+    INDEX idx_contenu (id_contenu),
     INDEX idx_createur (id_createur)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Quiz sur l\'histoire familiale';

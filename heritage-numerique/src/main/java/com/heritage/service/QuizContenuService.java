@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -75,14 +76,17 @@ public class QuizContenuService {
         }
 
         // 4. Vérifier qu'il n'y a pas déjà un quiz pour ce contenu
-        // Note: Les quiz ne sont plus liés directement aux contenus par ID
-        // Cette vérification est désactivée pour l'instant
+        boolean quizExiste = quizRepository.findByContenuId(contenu.getId()).isPresent();
+        if (quizExiste) {
+            throw new BadRequestException("Ce contenu possède déjà un quiz");
+        }
 
         // 5. Créer le quiz
         Quiz quiz = new Quiz();
         quiz.setTitre(request.getTitre());
         quiz.setDescription(request.getDescription());
         quiz.setFamille(contenu.getFamille());
+        quiz.setContenu(contenu); // Lier le quiz au contenu
         quiz.setCreateur(utilisateur);
         quiz.setActif(true);
         quiz = quizRepository.save(quiz);
@@ -159,14 +163,17 @@ public class QuizContenuService {
         }
 
         // 3. Vérifier qu'il n'y a pas déjà un quiz pour ce contenu
-        // Note: Les quiz ne sont plus liés directement aux contenus par ID
-        // Cette vérification est désactivée pour l'instant
+        boolean quizExiste = quizRepository.findByContenuId(contenu.getId()).isPresent();
+        if (quizExiste) {
+            throw new BadRequestException("Ce contenu possède déjà un quiz");
+        }
 
         // 4. Créer le quiz public
         Quiz quiz = new Quiz();
         quiz.setTitre(request.getTitre());
         quiz.setDescription(request.getDescription());
         quiz.setFamille(contenu.getFamille());
+        quiz.setContenu(contenu); // Lier le quiz au contenu public
         quiz.setCreateur(utilisateur);
         quiz.setActif(true);
         quiz = quizRepository.save(quiz);
@@ -260,6 +267,43 @@ public class QuizContenuService {
                     return conteDTO;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lie un quiz existant à un contenu.
+     * Permet de migrer les anciens quiz créés avant l'ajout du champ id_contenu.
+     * 
+     * @param quizId ID du quiz à lier
+     * @param contenuId ID du contenu
+     * @param utilisateurId ID de l'utilisateur (doit être ADMIN)
+     */
+    @Transactional
+    public void lierQuizAContenu(Long quizId, Long contenuId, Long utilisateurId) {
+        // 1. Vérifier que l'utilisateur est super-admin
+        Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
+                .orElseThrow(() -> new NotFoundException("Utilisateur non trouvé"));
+
+        if (!"ROLE_ADMIN".equals(utilisateur.getRole())) {
+            throw new BadRequestException("Seul le super-admin peut lier des quiz aux contenus");
+        }
+
+        // 2. Vérifier que le quiz existe
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new NotFoundException("Quiz non trouvé"));
+
+        // 3. Vérifier que le contenu existe
+        Contenu contenu = contenuRepository.findById(contenuId)
+                .orElseThrow(() -> new NotFoundException("Contenu non trouvé"));
+
+        // 4. Vérifier que le contenu n'a pas déjà un quiz
+        Optional<Quiz> quizExistant = quizRepository.findByContenuId(contenuId);
+        if (quizExistant.isPresent() && !quizExistant.get().getId().equals(quizId)) {
+            throw new BadRequestException("Ce contenu possède déjà un autre quiz");
+        }
+
+        // 5. Lier le quiz au contenu
+        quiz.setContenu(contenu);
+        quizRepository.save(quiz);
     }
 
     /**

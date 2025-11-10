@@ -1,5 +1,6 @@
 package com.heritage.service;
 
+import com.heritage.dto.ContenuAvecQuizDTO;
 import com.heritage.dto.ContenuDTO;
 import com.heritage.dto.ContenuRequest;
 import com.heritage.dto.DemandePublicationDTO;
@@ -11,7 +12,9 @@ import com.heritage.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -38,19 +41,23 @@ public class ContenuService {
     private final CategorieRepository categorieRepository;
     private final MembreFamilleRepository membreFamilleRepository;
     private final DemandePublicationRepository demandePublicationRepository;
+    private final QuizRepository quizRepository;
+    
     public ContenuService(
             ContenuRepository contenuRepository,
             FamilleRepository familleRepository,
             UtilisateurRepository utilisateurRepository,
             CategorieRepository categorieRepository,
             MembreFamilleRepository membreFamilleRepository,
-            DemandePublicationRepository demandePublicationRepository) {
+            DemandePublicationRepository demandePublicationRepository,
+            QuizRepository quizRepository) {
         this.contenuRepository = contenuRepository;
         this.familleRepository = familleRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.categorieRepository = categorieRepository;
         this.membreFamilleRepository = membreFamilleRepository;
         this.demandePublicationRepository = demandePublicationRepository;
+        this.quizRepository = quizRepository;
     }
 
     /**
@@ -344,6 +351,99 @@ public class ContenuService {
         return demandes.stream()
                 .map(this::convertDemandeToDTO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère un contenu publique avec son quiz et ses questions (si disponible).
+     * Accessible par tous (contenu public).
+     * 
+     * @param contenuId ID du contenu
+     * @return DTO du contenu avec son quiz
+     */
+    @Transactional(readOnly = true)
+    public ContenuAvecQuizDTO getContenuPublicAvecQuiz(Long contenuId) {
+        // 1. Vérifier que le contenu existe et est publique
+        Contenu contenu = contenuRepository.findById(contenuId)
+                .orElseThrow(() -> new NotFoundException("Contenu non trouvé"));
+
+        if (!"PUBLIE".equals(contenu.getStatut())) {
+            throw new UnauthorizedException("Ce contenu n'est pas public");
+        }
+
+        // 2. Construire le DTO du contenu
+        ContenuAvecQuizDTO dto = ContenuAvecQuizDTO.builder()
+                .id(contenu.getId())
+                .idFamille(contenu.getFamille() != null ? contenu.getFamille().getId() : null)
+                .nomFamille(contenu.getFamille() != null ? contenu.getFamille().getNom() : null)
+                .idAuteur(contenu.getAuteur().getId())
+                .nomAuteur(contenu.getAuteur().getNom() + " " + contenu.getAuteur().getPrenom())
+                .idCategorie(contenu.getCategorie().getId())
+                .nomCategorie(contenu.getCategorie().getNom())
+                .titre(contenu.getTitre())
+                .description(contenu.getDescription())
+                .typeContenu(contenu.getTypeContenu())
+                .urlFichier(contenu.getUrlFichier())
+                .urlPhoto(contenu.getUrlPhoto())
+                .tailleFichier(contenu.getTailleFichier())
+                .duree(contenu.getDuree())
+                .dateEvenement(contenu.getDateEvenement())
+                .lieu(contenu.getLieu())
+                .region(contenu.getRegion())
+                .statut(contenu.getStatut())
+                .dateCreation(contenu.getDateCreation())
+                .dateModification(contenu.getDateModification())
+                .build();
+
+        // 3. Récupérer le quiz associé (si disponible) avec ses questions et propositions
+        Optional<Quiz> quizOptional = quizRepository.findByContenuIdWithQuestionsAndPropositions(contenuId);
+        
+        quizOptional.ifPresent(quiz -> {
+            // Construire la liste des questions avec leurs propositions
+            List<ContenuAvecQuizDTO.QuestionAvecPropositionsDTO> questions = new ArrayList<>();
+            
+            for (QuestionQuiz question : quiz.getQuestions()) {
+                // Construire la liste des propositions
+                List<ContenuAvecQuizDTO.PropositionDTO> propositions = question.getPropositions().stream()
+                        .map(prop -> ContenuAvecQuizDTO.PropositionDTO.builder()
+                                .id(prop.getId())
+                                .texteProposition(prop.getTexteProposition())
+                                .estCorrecte(prop.getEstCorrecte())
+                                .ordre(prop.getOrdre())
+                                .build())
+                        .collect(Collectors.toList());
+
+                // Construire la question avec ses propositions
+                ContenuAvecQuizDTO.QuestionAvecPropositionsDTO questionDTO = 
+                        ContenuAvecQuizDTO.QuestionAvecPropositionsDTO.builder()
+                                .id(question.getId())
+                                .texteQuestion(question.getTexteQuestion())
+                                .typeQuestion(question.getTypeQuestion())
+                                .ordre(question.getOrdre())
+                                .points(question.getPoints())
+                                .propositions(propositions)
+                                .build();
+                
+                questions.add(questionDTO);
+            }
+
+            // Construire le DTO du quiz
+            ContenuAvecQuizDTO.QuizAvecQuestionsDTO quizDTO = 
+                    ContenuAvecQuizDTO.QuizAvecQuestionsDTO.builder()
+                            .id(quiz.getId())
+                            .titre(quiz.getTitre())
+                            .description(quiz.getDescription())
+                            .difficulte(quiz.getDifficulte())
+                            .tempsLimite(quiz.getTempsLimite())
+                            .actif(quiz.getActif())
+                            .nombreQuestions(questions.size())
+                            .dateCreation(quiz.getDateCreation())
+                            .questions(questions)
+                            .build();
+
+            dto.setQuiz(quizDTO);
+        });
+
+        return dto;
     }
 
     /**
