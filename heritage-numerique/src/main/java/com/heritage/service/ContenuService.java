@@ -2,6 +2,7 @@ package com.heritage.service;
 
 import com.heritage.dto.ContenuDTO;
 import com.heritage.dto.ContenuRequest;
+import com.heritage.dto.DemandePublicationDTO;
 import com.heritage.entite.*;
 import com.heritage.exception.BadRequestException;
 import com.heritage.exception.NotFoundException;
@@ -131,9 +132,10 @@ public class ContenuService {
      * 
      * @param contenuId ID du contenu
      * @param demandeurId ID de l'utilisateur demandeur (doit être ADMIN famille)
+     * @return DemandePublicationDTO contenant le statut de la demande
      */
     @Transactional
-    public void demanderPublication(Long contenuId, Long demandeurId) {
+    public DemandePublicationDTO demanderPublication(Long contenuId, Long demandeurId) {
         // 1. Vérifier que le contenu existe
         Contenu contenu = contenuRepository.findById(contenuId)
                 .orElseThrow(() -> new NotFoundException("Contenu non trouvé"));
@@ -177,10 +179,13 @@ public class ContenuService {
         demande.setDemandeur(demandeur);
         demande.setStatut("EN_ATTENTE");
         
-        demandePublicationRepository.save(demande);
+        demande = demandePublicationRepository.save(demande);
         
         // TODO: Envoyer une notification au SUPERADMIN
         // Tous les ROLE_ADMIN doivent être notifiés de la demande
+        
+        // 5. Retourner le DTO avec le statut de la demande
+        return convertDemandeToDTO(demande);
     }
 
     /**
@@ -316,6 +321,32 @@ public class ContenuService {
     }
 
     /**
+     * Récupère toutes les demandes de publication d'une famille.
+     * Accessible uniquement par les membres de la famille.
+     * 
+     * @param familleId ID de la famille
+     * @param utilisateurId ID de l'utilisateur demandeur
+     * @return Liste des demandes de publication
+     */
+    @Transactional(readOnly = true)
+    public List<DemandePublicationDTO> getDemandesPublicationFamille(Long familleId, Long utilisateurId) {
+        // Vérifier que l'utilisateur est membre de la famille
+        boolean estMembre = membreFamilleRepository
+                .existsByUtilisateurIdAndFamilleId(utilisateurId, familleId);
+
+        if (!estMembre) {
+            throw new UnauthorizedException("Vous n'êtes pas membre de cette famille");
+        }
+
+        // Récupérer toutes les demandes de publication de la famille
+        List<DemandePublication> demandes = demandePublicationRepository.findByContenuFamilleId(familleId);
+        
+        return demandes.stream()
+                .map(this::convertDemandeToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Convertit une entité Contenu en DTO.
      * 
      * @param contenu Entité à convertir
@@ -342,6 +373,29 @@ public class ContenuService {
                 .statut(contenu.getStatut())
                 .dateCreation(contenu.getDateCreation())
                 .dateModification(contenu.getDateModification())
+                .build();
+    }
+
+    /**
+     * Convertit une entité DemandePublication en DTO.
+     * 
+     * @param demande Entité DemandePublication
+     * @return DTO de la demande
+     */
+    private DemandePublicationDTO convertDemandeToDTO(DemandePublication demande) {
+        return DemandePublicationDTO.builder()
+                .id(demande.getId())
+                .idContenu(demande.getContenu().getId())
+                .titreContenu(demande.getContenu().getTitre())
+                .idDemandeur(demande.getDemandeur().getId())
+                .nomDemandeur(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom())
+                .idValideur(demande.getValideur() != null ? demande.getValideur().getId() : null)
+                .nomValideur(demande.getValideur() != null ? 
+                        demande.getValideur().getNom() + " " + demande.getValideur().getPrenom() : null)
+                .statut(demande.getStatut())
+                .commentaire(demande.getCommentaire())
+                .dateDemande(demande.getDateDemande())
+                .dateTraitement(demande.getDateTraitement())
                 .build();
     }
 }

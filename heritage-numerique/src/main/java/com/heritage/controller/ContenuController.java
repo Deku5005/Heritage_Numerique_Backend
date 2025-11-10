@@ -2,6 +2,7 @@ package com.heritage.controller;
 
 import com.heritage.dto.ContenuDTO;
 import com.heritage.dto.ContenuRequest;
+import com.heritage.dto.DemandePublicationDTO;
 import com.heritage.service.ContenuService;
 import com.heritage.util.AuthenticationHelper;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import java.util.List;
  * - POST /api/contenus/demandes/{demandeId}/rejeter : rejeter publication (SUPERADMIN uniquement)
  * - GET /api/contenus/publics : récupérer les contenus publics (tous)
  * - GET /api/contenus/famille/{familleId} : récupérer les contenus privés (membres uniquement)
+ * - GET /api/contenus/demandes/famille/{familleId} : récupérer toutes les demandes de publication d'une famille (membres uniquement)
  */
 @RestController
 @RequestMapping("/api/contenus")
@@ -62,17 +64,17 @@ public class ContenuController {
      * 
      * @param contenuId ID du contenu
      * @param authentication Authentification
-     * @return Message de confirmation
+     * @return DemandePublicationDTO avec le statut de la demande (EN_ATTENTE, APPROUVEE, REJETEE)
      */
     @PostMapping("/{contenuId}/demander-publication")
     @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
-    public ResponseEntity<String> demanderPublication(
+    public ResponseEntity<DemandePublicationDTO> demanderPublication(
             @PathVariable Long contenuId,
             Authentication authentication) {
         
         Long demandeurId = getUserIdFromAuth(authentication);
-        contenuService.demanderPublication(contenuId, demandeurId);
-        return ResponseEntity.ok("Demande de publication envoyée");
+        DemandePublicationDTO demande = contenuService.demanderPublication(contenuId, demandeurId);
+        return ResponseEntity.ok(demande);
     }
 
     /**
@@ -144,6 +146,26 @@ public class ContenuController {
         Long utilisateurId = getUserIdFromAuth(authentication);
         List<ContenuDTO> contenus = contenuService.getContenusPrivesFamille(familleId, utilisateurId);
         return ResponseEntity.ok(contenus);
+    }
+
+    /**
+     * Récupère toutes les demandes de publication d'une famille.
+     * Accessible uniquement par les membres de la famille.
+     * Permet de voir l'historique complet des demandes (EN_ATTENTE, APPROUVEE, REJETEE).
+     * 
+     * @param familleId ID de la famille
+     * @param authentication Authentification
+     * @return Liste des demandes de publication avec leurs statuts
+     */
+    @GetMapping("/demandes/famille/{familleId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<List<DemandePublicationDTO>> getDemandesPublicationFamille(
+            @PathVariable Long familleId,
+            Authentication authentication) {
+        
+        Long utilisateurId = getUserIdFromAuth(authentication);
+        List<DemandePublicationDTO> demandes = contenuService.getDemandesPublicationFamille(familleId, utilisateurId);
+        return ResponseEntity.ok(demandes);
     }
 
     /**
