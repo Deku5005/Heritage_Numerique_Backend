@@ -81,5 +81,13 @@ public class Quiz {
     public String getStatut() {
         return this.actif ? "ACTIF" : "INACTIF";
     }
+
+    /**
+     * Retourne l'objet Contenu associé à ce quiz.
+     * Méthode ajoutée pour éviter le conflit avec getContenu() qui retourne la description.
+     */
+    public Contenu getContenuAssocie() {
+        return this.contenu;
+    }
 }
 

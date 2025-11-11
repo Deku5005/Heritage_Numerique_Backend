@@ -1,13 +1,10 @@
 package com.heritage.service;
 
-import com.heritage.dto.ArtisanatDTO;
-import com.heritage.dto.ConteDTO;
-import com.heritage.dto.DevinetteDTO;
-import com.heritage.dto.ProverbeDTO;
-import com.heritage.entite.Contenu;
-import com.heritage.entite.MembreFamille;
+import com.heritage.dto.*;
+import com.heritage.entite.*;
 import com.heritage.repository.ContenuRepository;
 import com.heritage.repository.MembreFamilleRepository;
+import com.heritage.repository.QuizRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,11 +24,14 @@ public class ContenuPublicService {
 
     private final ContenuRepository contenuRepository;
     private final MembreFamilleRepository membreFamilleRepository;
+    private final QuizRepository quizRepository;
 
     public ContenuPublicService(ContenuRepository contenuRepository,
-                               MembreFamilleRepository membreFamilleRepository) {
+                               MembreFamilleRepository membreFamilleRepository,
+                               QuizRepository quizRepository) {
         this.contenuRepository = contenuRepository;
         this.membreFamilleRepository = membreFamilleRepository;
+        this.quizRepository = quizRepository;
     }
 
     /**
@@ -110,6 +110,11 @@ public class ContenuPublicService {
                     membreAuteur.getLienParente() : "Non spécifié";
         }
 
+        // Récupérer le quiz associé au conte avec ses questions
+        QuizDTO quizDTO = quizRepository.findByContenuIdWithQuestionsAndPropositions(conte.getId())
+                .map(this::convertToQuizDTO)
+                .orElse(null);
+
         return ConteDTO.builder()
                 .id(conte.getId())
                 .titre(conte.getTitre())
@@ -127,7 +132,7 @@ public class ContenuPublicService {
                 .region(conte.getRegion())
                 .idFamille(conte.getFamille() != null ? conte.getFamille().getId() : null)
                 .nomFamille(conte.getFamille() != null ? conte.getFamille().getNom() : "Non spécifié")
-                .quiz(null) // Pas de quiz dans les contenus publics
+                .quiz(quizDTO)
                 .build();
     }
 
@@ -292,6 +297,62 @@ public class ContenuPublicService {
                 .region(devinette.getRegion())
                 .idFamille(devinette.getFamille() != null ? devinette.getFamille().getId() : null)
                 .nomFamille(devinette.getFamille() != null ? devinette.getFamille().getNom() : "Non spécifié")
+                .build();
+    }
+
+    /**
+     * Convertit une entité Quiz en DTO avec ses questions.
+     */
+    private QuizDTO convertToQuizDTO(Quiz quiz) {
+        List<QuestionQuizDTO> questionsDTO = quiz.getQuestions().stream()
+                .map(this::convertToQuestionQuizDTO)
+                .collect(Collectors.toList());
+
+        return QuizDTO.builder()
+                .id(quiz.getId())
+                .titre(quiz.getTitre())
+                .description(quiz.getDescription())
+                .difficulte(quiz.getDifficulte())
+                .tempsLimite(quiz.getTempsLimite())
+                .actif(quiz.getActif())
+                .nombreQuestions(quiz.getQuestions().size())
+                .dateCreation(quiz.getDateCreation())
+                .idFamille(quiz.getFamille() != null ? quiz.getFamille().getId() : null)
+                .nomFamille(quiz.getFamille() != null ? quiz.getFamille().getNom() : null)
+                .idCreateur(quiz.getCreateur() != null ? quiz.getCreateur().getId() : null)
+                .nomCreateur(quiz.getCreateur() != null ? 
+                        quiz.getCreateur().getNom() + " " + quiz.getCreateur().getPrenom() : null)
+                .questions(questionsDTO)
+                .build();
+    }
+
+    /**
+     * Convertit une entité QuestionQuiz en DTO avec ses propositions.
+     */
+    private QuestionQuizDTO convertToQuestionQuizDTO(QuestionQuiz question) {
+        List<PropositionDTO> propositionsDTO = question.getPropositions().stream()
+                .map(this::convertToPropositionDTO)
+                .collect(Collectors.toList());
+
+        return QuestionQuizDTO.builder()
+                .id(question.getId())
+                .texteQuestion(question.getTexteQuestion())
+                .typeQuestion(question.getTypeQuestion())
+                .ordre(question.getOrdre())
+                .points(question.getPoints())
+                .propositions(propositionsDTO)
+                .build();
+    }
+
+    /**
+     * Convertit une entité Proposition en DTO.
+     */
+    private PropositionDTO convertToPropositionDTO(Proposition proposition) {
+        return PropositionDTO.builder()
+                .id(proposition.getId())
+                .texteProposition(proposition.getTexteProposition())
+                .estCorrecte(proposition.getEstCorrecte())
+                .ordre(proposition.getOrdre())
                 .build();
     }
 }

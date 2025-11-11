@@ -61,6 +61,26 @@ public class SuperAdminQuizService {
     }
 
     /**
+     * Vérifie si un quiz est public.
+     * Un quiz est considéré comme public si :
+     * 1. Il appartient à la famille virtuelle PUBLIC_HERITAGE, OU
+     * 2. Il est lié à un contenu dont le statut est PUBLIE
+     */
+    private boolean estQuizPublic(Quiz quiz) {
+        // Vérification 1 : Quiz créé directement par le SuperAdmin dans PUBLIC_HERITAGE
+        boolean estQuizPublicDirect = quiz.getFamille() != null && 
+                                       "PUBLIC_HERITAGE".equals(quiz.getFamille().getNom());
+        
+        // Vérification 2 : Quiz lié à un contenu publié (via demande de publication approuvée)
+        // Note: Utiliser getContenuAssocie() car getContenu() retourne une String (description)
+        Contenu contenuAssocie = quiz.getContenuAssocie();
+        boolean estQuizPublicViaContenu = contenuAssocie != null && 
+                                           "PUBLIE".equals(contenuAssocie.getStatut());
+        
+        return estQuizPublicDirect || estQuizPublicViaContenu;
+    }
+
+    /**
      * Crée un quiz public (accessible à tous).
      */
     @Transactional
@@ -88,14 +108,17 @@ public class SuperAdminQuizService {
 
     /**
      * Récupère tous les quiz publics.
+     * Retourne les quiz créés directement dans PUBLIC_HERITAGE 
+     * ET les quiz liés à des contenus publiés.
      */
     @Transactional(readOnly = true)
     public List<QuizDTO> getQuizPublics() {
-        Famille famillePublic = getFamillePublic();
+        // Récupérer tous les quiz actifs
+        List<Quiz> tousLesQuiz = quizRepository.findAll();
         
-        List<Quiz> quiz = quizRepository.findByFamilleIdAndActif(famillePublic.getId(), true);
-        
-        return quiz.stream()
+        // Filtrer pour ne garder que les quiz publics
+        return tousLesQuiz.stream()
+                .filter(quiz -> quiz.getActif() && estQuizPublic(quiz))
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -109,7 +132,7 @@ public class SuperAdminQuizService {
                 .orElseThrow(() -> new NotFoundException("Quiz non trouvé"));
 
         // Vérifier que c'est un quiz public
-        if (!"PUBLIC_HERITAGE".equals(quiz.getFamille().getNom())) {
+        if (!estQuizPublic(quiz)) {
             throw new UnauthorizedException("Ce n'est pas un quiz public");
         }
 
@@ -126,7 +149,7 @@ public class SuperAdminQuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new NotFoundException("Quiz non trouvé"));
 
-        if (!"PUBLIC_HERITAGE".equals(quiz.getFamille().getNom())) {
+        if (!estQuizPublic(quiz)) {
             throw new UnauthorizedException("Ce n'est pas un quiz public");
         }
 
@@ -152,7 +175,7 @@ public class SuperAdminQuizService {
         QuestionQuiz question = questionQuizRepository.findById(questionId)
                 .orElseThrow(() -> new NotFoundException("Question non trouvée"));
 
-        if (!"PUBLIC_HERITAGE".equals(question.getQuiz().getFamille().getNom())) {
+        if (!estQuizPublic(question.getQuiz())) {
             throw new UnauthorizedException("Ce n'est pas une question d'un quiz public");
         }
 
@@ -176,7 +199,7 @@ public class SuperAdminQuizService {
         Quiz quiz = quizRepository.findById(request.getIdQuiz())
                 .orElseThrow(() -> new NotFoundException("Quiz non trouvé"));
 
-        if (!"PUBLIC_HERITAGE".equals(quiz.getFamille().getNom())) {
+        if (!estQuizPublic(quiz)) {
             throw new UnauthorizedException("Ce n'est pas un quiz public");
         }
 

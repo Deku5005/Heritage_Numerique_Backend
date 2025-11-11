@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO pour les informations d'un quiz.
@@ -28,6 +29,7 @@ public class QuizDTO {
     private Boolean actif;
     private Integer nombreQuestions;
     private LocalDateTime dateCreation;
+    private List<QuestionQuizDTO> questions;
 
     // Méthodes manquantes pour compatibilité
     public void setQuiz(QuizDTO quiz) {

@@ -50,6 +50,7 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     /**
      * Recherche le quiz associé à un contenu avec chargement EAGER des questions.
+     * Les propositions seront chargées via lazy loading dans le contexte transactionnel.
      * 
      * @param contenuId ID du contenu
      * @return Quiz optionnel avec questions chargées
