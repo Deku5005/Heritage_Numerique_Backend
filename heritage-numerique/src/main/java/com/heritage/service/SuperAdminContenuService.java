@@ -35,17 +35,20 @@ public class SuperAdminContenuService {
     private final FamilleRepository familleRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final CategorieRepository categorieRepository;
+    private final FileStorageService fileStorageService;
 
 
     public SuperAdminContenuService(
             ContenuRepository contenuRepository,
             FamilleRepository familleRepository,
             UtilisateurRepository utilisateurRepository,
-            CategorieRepository categorieRepository) {
+            CategorieRepository categorieRepository,
+            FileStorageService fileStorageService) {
         this.contenuRepository = contenuRepository;
         this.familleRepository = familleRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.categorieRepository = categorieRepository;
+        this.fileStorageService = fileStorageService;
     }
 
 
@@ -504,14 +507,11 @@ public class SuperAdminContenuService {
 
     /**
      * Sauvegarde un fichier uploadé et retourne l'URL.
+     * Utilise le FileStorageService pour garantir la cohérence avec la configuration.
      */
     private String sauvegarderFichier(MultipartFile fichier, String type) {
         try {
-            String nomFichier = UUID.randomUUID().toString() + "_" + fichier.getOriginalFilename();
-            Path cheminFichier = Paths.get("uploads/" + type + "/" + nomFichier);
-            Files.createDirectories(cheminFichier.getParent());
-            Files.copy(fichier.getInputStream(), cheminFichier);
-            return "/uploads/" + type + "/" + nomFichier;
+            return fileStorageService.storeFile(fichier, type);
         } catch (IOException e) {
             throw new BadRequestException("Erreur lors de la sauvegarde du fichier: " + e.getMessage());
         }
