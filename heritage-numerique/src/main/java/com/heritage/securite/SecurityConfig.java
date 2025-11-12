@@ -9,30 +9,27 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+import static org.springframework.http.HttpMethod.OPTIONS;
 
 /**
  * Configuration de sécurité Spring Security.
- * * Responsabilités :
- * - Configurer l'authentification JWT
- * - Définir les endpoints publics et protégés
- * - Configurer le PasswordEncoder (BCrypt)
- * - Désactiver CSRF pour les API REST
- * - Configurer la gestion des sessions (STATELESS)
- * * Sécurité :
- * - CSRF désactivé : Pour les API REST avec JWT, CSRF n'est pas nécessaire car
- * les tokens JWT ne sont pas stockés dans les cookies (pas de vulnérabilité CSRF)
- * - Sessions STATELESS : Pas de session HTTP, authentification par JWT à chaque requête
- * - BCrypt pour le hashage des mots de passe (algorithme sécurisé avec salt automatique)
- * - JWT Filter ajouté avant UsernamePasswordAuthenticationFilter
+ * Combine la gestion JWT, les règles d'autorisation spécifiques et une configuration CORS détaillée.
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Pour @PreAuthorize, @Secured, etc.
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -45,83 +42,94 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
+    // --- Configuration CORS ---
+
     /**
-     * Configuration de la chaîne de filtres de sécurité.
-     * * Endpoints publics :
-     * - /api/auth/** : inscription et connexion (pas d'authentification requise)
-     * - /uploads/** : accès aux fichiers statiques (images, etc.) (pas d'authentification requise)
-     * - /swagger-ui/** : documentation Swagger (optionnel, pour dev/test)
-     * - /v3/api-docs/** : documentation OpenAPI
-     * * Endpoints protégés :
-     * - Tous les autres endpoints nécessitent une authentification
-     * * CSRF désactivé :
-     * Pour les API REST avec authentification JWT, CSRF n'est pas nécessaire.
-     * Les tokens JWT sont envoyés dans le header Authorization (pas dans un cookie),
-     * donc il n'y a pas de risque d'attaque CSRF (Cross-Site Request Forgery).
-     * * Sessions STATELESS :
-     * Pas de session HTTP côté serveur, l'authentification se fait uniquement via JWT.
-     * Chaque requête doit inclure le token JWT.
+     * Définit les règles de partage de ressources (CORS) pour le navigateur.
+     * Basé sur la configuration détaillée de votre deuxième fichier.
      */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Autoriser l'accès depuis l'application frontend (Angular/React/Vue sur localhost:4200)
+        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        // Autoriser les méthodes HTTP usuelles
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // Autoriser les headers nécessaires (y compris Authorization pour le JWT)
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
+        // Autoriser l'envoi de cookies/informations d'identification (si besoin, bien que JWT soit dans le header)
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Appliquer cette configuration à tous les chemins (/**)
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+
+    // --- Chaîne de Filtres de Sécurité (SecurityFilterChain) ---
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Désactiver CSRF (pas nécessaire pour API REST avec JWT)
-                .csrf(csrf -> csrf.disable())
+                // 1. Configuration CORS : Utilise le Bean corsConfigurationSource défini ci-dessus
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // Configuration CORS
-                .cors(cors -> cors.disable())
+                // 2. Désactiver CSRF (non nécessaire pour API REST avec JWT)
+                .csrf(AbstractHttpConfigurer::disable)
 
-                // Configuration des autorisations
+                // 3. Configuration des autorisations (EndPoints)
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints publics (authentification)
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // ✅ AJOUT : Autoriser l'accès public aux contenus publics (contes, artisanats, proverbes, devinettes)
+                        // Endpoints publics (Contenus) - Inclus du premier fichier
                         .requestMatchers("/api/public/**").permitAll()
-
-                        // ✅ AJOUT : Autoriser l'accès aux contenus publics avec quiz
                         .requestMatchers("/api/contenus/public/**").permitAll()
-
-                        // ✅ AJOUT : Autoriser l'accès public aux contes, artisanats, proverbes et devinettes
                         .requestMatchers("/api/superadmin/contenus-publics/contes").permitAll()
                         .requestMatchers("/api/superadmin/contenus-publics/artisanats").permitAll()
                         .requestMatchers("/api/superadmin/contenus-publics/proverbes").permitAll()
                         .requestMatchers("/api/superadmin/contenus-publics/devinettes").permitAll()
 
+                        // Accès aux fichiers statiques (images, PDF)
                         .requestMatchers("/images/**").permitAll()
-
-                        // ✅ AJOUT : Autoriser l'accès non authentifié aux fichiers statiques (images, PDF)
                         .requestMatchers("/uploads/**").permitAll()
 
-                        // Documentation Swagger (optionnel, à sécuriser en production)
+                        // Autoriser toutes les requêtes OPTIONS (preflight CORS) - Inclus du deuxième fichier
+                        .requestMatchers(OPTIONS, "/**").permitAll()
+
+                        // Documentation Swagger/OpenAPI
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
 
                         // Endpoints admin (réservés aux ROLE_ADMIN)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                        // Endpoints superadmin (du deuxième fichier)
+                        .requestMatchers("/api/superadmin/**").hasRole("ADMIN") // Assumer que 'superadmin' utilise aussi ROLE_ADMIN
+
                         // Tous les autres endpoints nécessitent une authentification
                         .anyRequest().authenticated()
                 )
 
-                // Gestion des sessions : STATELESS (pas de session HTTP)
-                // L'authentification se fait uniquement via JWT
+                // 4. Gestion des sessions : STATELESS (pas de session HTTP)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Provider d'authentification
+                // 5. Provider d'authentification
                 .authenticationProvider(authenticationProvider())
 
-                // Ajouter le filtre JWT avant UsernamePasswordAuthenticationFilter
+                // 6. Ajouter le filtre JWT avant UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+
+    // --- Beans d'Authentification et de Cryptage ---
+
     /**
      * Provider d'authentification personnalisé.
-     * Utilise CustomUserDetailsService pour charger les utilisateurs
-     * et BCryptPasswordEncoder pour vérifier les mots de passe.
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -133,7 +141,6 @@ public class SecurityConfig {
 
     /**
      * AuthenticationManager pour l'authentification programmatique.
-     * Utilisé dans AuthService pour la connexion.
      */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -142,17 +149,6 @@ public class SecurityConfig {
 
     /**
      * PasswordEncoder avec BCrypt.
-     * * Sécurité :
-     * - BCrypt est un algorithme de hashage sécurisé pour les mots de passe
-     * - Génère automatiquement un salt unique pour chaque mot de passe
-     * - Résistant aux attaques par rainbow tables et brute force
-     * - Paramètre de coût (work factor) : 10 par défaut (2^10 itérations)
-     * * Pourquoi BCrypt :
-     * - Spécialement conçu pour hasher des mots de passe (lent par design)
-     * - Salt automatique (pas besoin de le gérer manuellement)
-     * - Résistant aux attaques GPU (algorithme adaptatif)
-     * - Standard de l'industrie pour le stockage de mots de passe
-     * * Alternative : Argon2 (encore plus moderne, mais BCrypt est largement accepté)
      */
     @Bean
     public PasswordEncoder passwordEncoder() {

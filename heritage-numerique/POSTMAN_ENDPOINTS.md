@@ -1117,11 +1117,24 @@ Authorization: Bearer {token}
     "typeContenu": "CONTE",
     "statut": "PUBLIE",
     "dateCreation": "2024-01-10T09:00:00",
+    "dateModification": "2024-01-10T09:00:00",
     "nomCreateur": "Traoré",
     "prenomCreateur": "Amadou",
     "emailCreateur": "amadou@example.com",
     "nomFamille": "Famille Traoré",
-    "regionFamille": "District de Bamako"
+    "regionFamille": "District de Bamako",
+    "urlFichier": "https://storage.example.com/contes/conte-tortue-lievre.pdf",
+    "urlPhoto": "https://storage.example.com/photos/conte-tortue-lievre.jpg",
+    "tailleFichier": 2048576,
+    "duree": null,
+    "lieu": "Bamako",
+    "region": "District de Bamako",
+    "dateEvenement": null,
+    "idCategorie": 1,
+    "nomCategorie": "Contes Traditionnels",
+    "texteProverbe": null,
+    "significationProverbe": null,
+    "origineProverbe": null
   },
   {
     "id": 2,
@@ -1130,11 +1143,24 @@ Authorization: Bearer {token}
     "typeContenu": "CONTE",
     "statut": "BROUILLON",
     "dateCreation": "2024-01-12T14:20:00",
+    "dateModification": "2024-01-12T14:20:00",
     "nomCreateur": "Keita",
     "prenomCreateur": "Fatoumata",
     "emailCreateur": "fatoumata@example.com",
     "nomFamille": "Famille Keita",
-    "regionFamille": "Région de Dakar"
+    "regionFamille": "Région de Dakar",
+    "urlFichier": "https://storage.example.com/contes/conte-sagesse.pdf",
+    "urlPhoto": "https://storage.example.com/photos/conte-sagesse.jpg",
+    "tailleFichier": 1536000,
+    "duree": null,
+    "lieu": "Dakar",
+    "region": "Région de Dakar",
+    "dateEvenement": null,
+    "idCategorie": 1,
+    "nomCategorie": "Contes Traditionnels",
+    "texteProverbe": null,
+    "significationProverbe": null,
+    "origineProverbe": null
   }
 ]
 ```
@@ -1155,11 +1181,24 @@ Authorization: Bearer {token}
     "typeContenu": "ARTISANAT",
     "statut": "PUBLIE",
     "dateCreation": "2024-01-11T11:15:00",
+    "dateModification": "2024-01-11T11:15:00",
     "nomCreateur": "Traoré",
     "prenomCreateur": "Amadou",
     "emailCreateur": "amadou@example.com",
     "nomFamille": "Famille Traoré",
-    "regionFamille": "District de Bamako"
+    "regionFamille": "District de Bamako",
+    "urlFichier": "https://storage.example.com/artisanats/poterie-traditionnelle.pdf",
+    "urlPhoto": "https://storage.example.com/photos/poterie-traditionnelle.jpg",
+    "tailleFichier": 3145728,
+    "duree": null,
+    "lieu": "Bamako",
+    "region": "District de Bamako",
+    "dateEvenement": null,
+    "idCategorie": 2,
+    "nomCategorie": "Artisanat",
+    "texteProverbe": null,
+    "significationProverbe": null,
+    "origineProverbe": null
   }
 ]
 ```
@@ -1180,11 +1219,24 @@ Authorization: Bearer {token}
     "typeContenu": "PROVERBE",
     "statut": "PUBLIE",
     "dateCreation": "2024-01-13T16:45:00",
+    "dateModification": "2024-01-13T16:45:00",
     "nomCreateur": "Keita",
     "prenomCreateur": "Moussa",
     "emailCreateur": "moussa@example.com",
     "nomFamille": "Famille Keita",
-    "regionFamille": "Région de Dakar"
+    "regionFamille": "Région de Dakar",
+    "urlFichier": null,
+    "urlPhoto": "https://storage.example.com/photos/proverbe-patience.jpg",
+    "tailleFichier": null,
+    "duree": null,
+    "lieu": "Dakar",
+    "region": "Région de Dakar",
+    "dateEvenement": null,
+    "idCategorie": 3,
+    "nomCategorie": "Proverbes",
+    "texteProverbe": "La patience mène à tout",
+    "significationProverbe": "Celui qui sait attendre finit toujours par atteindre son objectif",
+    "origineProverbe": "Tradition Wolof"
   }
 ]
 ```
@@ -1205,11 +1257,24 @@ Authorization: Bearer {token}
     "typeContenu": "DEVINETTE",
     "statut": "PUBLIE",
     "dateCreation": "2024-01-14T08:30:00",
+    "dateModification": "2024-01-14T08:30:00",
     "nomCreateur": "Traoré",
     "prenomCreateur": "Fatoumata",
     "emailCreateur": "fatoumata@example.com",
     "nomFamille": "Famille Traoré",
-    "regionFamille": "District de Bamako"
+    "regionFamille": "District de Bamako",
+    "urlFichier": null,
+    "urlPhoto": "https://storage.example.com/photos/devinette-baobab.jpg",
+    "tailleFichier": null,
+    "duree": null,
+    "lieu": "Bamako",
+    "region": "District de Bamako",
+    "dateEvenement": null,
+    "idCategorie": 4,
+    "nomCategorie": "Devinettes",
+    "texteProverbe": null,
+    "significationProverbe": null,
+    "origineProverbe": null
   }
 ]
 ```

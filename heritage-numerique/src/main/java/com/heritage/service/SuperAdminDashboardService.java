@@ -341,6 +341,8 @@ public class SuperAdminDashboardService {
         // Sécuriser les relations optionnelles
         String nomFamille = contenu.getFamille() != null ? contenu.getFamille().getNom() : null;
         String regionFamille = contenu.getFamille() != null ? contenu.getFamille().getRegion() : null;
+        Long idCategorie = contenu.getCategorie() != null ? contenu.getCategorie().getId() : null;
+        String nomCategorie = contenu.getCategorie() != null ? contenu.getCategorie().getNom() : null;
 
 
         ContenuGlobalDTO.ContenuGlobalDTOBuilder builder = ContenuGlobalDTO.builder()
@@ -350,11 +352,24 @@ public class SuperAdminDashboardService {
                 .typeContenu(contenu.getTypeContenu())
                 .statut(contenu.getStatut())
                 .dateCreation(contenu.getDateCreation())
+                .dateModification(contenu.getDateModification())
                 .nomCreateur(contenu.getAuteur().getNom())
                 .prenomCreateur(contenu.getAuteur().getPrenom())
                 .emailCreateur(contenu.getAuteur().getEmail())
                 .nomFamille(nomFamille)
-                .regionFamille(regionFamille);// Miniature
+                .regionFamille(regionFamille)
+                // Champs média
+                .urlFichier(contenu.getUrlFichier())
+                .urlPhoto(contenu.getUrlPhoto())
+                .tailleFichier(contenu.getTailleFichier())
+                .duree(contenu.getDuree())
+                // Champs de localisation
+                .lieu(contenu.getLieu())
+                .region(contenu.getRegion())
+                .dateEvenement(contenu.getDateEvenement())
+                // Champs catégorie
+                .idCategorie(idCategorie)
+                .nomCategorie(nomCategorie);
 
 
         // ✅ Ajouter le mappage spécifique si le contenu est un PROVERBE
