@@ -154,7 +154,7 @@ public class SuperAdminContenuService {
 
 
         if (request.getPhotoConte() != null && !request.getPhotoConte().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoConte(), "photo");
+            String urlPhoto = sauvegarderFichier(request.getPhotoConte(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -198,7 +198,7 @@ public class SuperAdminContenuService {
 
 
         if (request.getPhotoConte() != null && !request.getPhotoConte().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoConte(), "photo");
+            String urlPhoto = sauvegarderFichier(request.getPhotoConte(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -257,7 +257,7 @@ public class SuperAdminContenuService {
 
         // 🖼️ Upload de la photo
         if (request.getPhotoProverbe() != null && !request.getPhotoProverbe().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoProverbe(), "proverbes");
+            String urlPhoto = sauvegarderFichier(request.getPhotoProverbe(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -303,7 +303,7 @@ public class SuperAdminContenuService {
 
         // 🖼️ Mise à jour de la photo
         if (request.getPhotoProverbe() != null && !request.getPhotoProverbe().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoProverbe(), "proverbes");
+            String urlPhoto = sauvegarderFichier(request.getPhotoProverbe(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -352,7 +352,7 @@ public class SuperAdminContenuService {
 
 
         if (request.getPhotoDevinette() != null && !request.getPhotoDevinette().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoDevinette(), "devinette");
+            String urlPhoto = sauvegarderFichier(request.getPhotoDevinette(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -386,7 +386,7 @@ public class SuperAdminContenuService {
 
         // Gérer la mise à jour de la photo
         if (request.getPhotoDevinette() != null && !request.getPhotoDevinette().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoDevinette(), "devinette");
+            String urlPhoto = sauvegarderFichier(request.getPhotoDevinette(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -431,7 +431,7 @@ public class SuperAdminContenuService {
 
 
         if (request.getPhotoArtisanat() != null && !request.getPhotoArtisanat().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoArtisanat(), "artisanat");
+            String urlPhoto = sauvegarderFichier(request.getPhotoArtisanat(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
@@ -468,7 +468,7 @@ public class SuperAdminContenuService {
 
         // Gérer la mise à jour des fichiers
         if (request.getPhotoArtisanat() != null && !request.getPhotoArtisanat().isEmpty()) {
-            String urlPhoto = sauvegarderFichier(request.getPhotoArtisanat(), "artisanat");
+            String urlPhoto = sauvegarderFichier(request.getPhotoArtisanat(), "images");
             contenu.setUrlPhoto(urlPhoto);
         }
 
