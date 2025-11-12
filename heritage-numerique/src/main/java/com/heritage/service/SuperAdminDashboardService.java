@@ -317,7 +317,7 @@ public class SuperAdminDashboardService {
 
 
     /**
-     * Récupère le détail d’une devinette spécifique.
+     * Récupère le détail d'une devinette spécifique.
      */
     @Transactional(readOnly = true)
     public ContenuGlobalDTO getDetailDevinette(Long id) {
@@ -331,6 +331,34 @@ public class SuperAdminDashboardService {
 
 
         return convertirContenuGlobal(contenu);
+    }
+
+
+    /**
+     * Récupère tous les utilisateurs de l'application.
+     * @return Liste de tous les utilisateurs avec leurs informations
+     */
+    @Transactional(readOnly = true)
+    public List<UtilisateurSuperAdminDTO> getAllUtilisateurs() {
+        return utilisateurRepository.findAll()
+                .stream()
+                .map(this::convertirUtilisateurSuperAdmin)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * Active ou désactive un utilisateur.
+     * @param id ID de l'utilisateur
+     * @param actif Statut d'activation (true = actif, false = désactivé)
+     */
+    @Transactional
+    public void toggleActivationUtilisateur(Long id, Boolean actif) {
+        com.heritage.entite.Utilisateur utilisateur = utilisateurRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID " + id));
+
+        utilisateur.setActif(actif);
+        utilisateurRepository.save(utilisateur);
     }
 
 
@@ -383,6 +411,34 @@ public class SuperAdminDashboardService {
 
 
         return builder.build();
+    }
+
+
+    private UtilisateurSuperAdminDTO convertirUtilisateurSuperAdmin(com.heritage.entite.Utilisateur utilisateur) {
+        // Créer les initiales : première lettre du prénom + première lettre du nom
+        String initialePrenom = utilisateur.getPrenom() != null && !utilisateur.getPrenom().isEmpty() 
+            ? utilisateur.getPrenom().substring(0, 1).toUpperCase() 
+            : "";
+        String initialeNom = utilisateur.getNom() != null && !utilisateur.getNom().isEmpty() 
+            ? utilisateur.getNom().substring(0, 1).toUpperCase() 
+            : "";
+        
+        // Format: "P.N. Prenom Nom"
+        String nomComplet = String.format("%s.%s. %s %s", 
+            initialePrenom, 
+            initialeNom, 
+            utilisateur.getPrenom(), 
+            utilisateur.getNom());
+
+        return UtilisateurSuperAdminDTO.builder()
+                .id(utilisateur.getId())
+                .nomComplet(nomComplet)
+                .role(utilisateur.getRole())
+                .telephone(utilisateur.getNumeroTelephone())
+                .email(utilisateur.getEmail())
+                .dateAjout(utilisateur.getDateCreation())
+                .actif(utilisateur.getActif())
+                .build();
     }
 }
 

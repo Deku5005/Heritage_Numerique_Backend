@@ -184,7 +184,7 @@ public class SuperAdminDashboardController {
 
 
     /**
-     * Récupère le détail d’un artisanat par son ID.
+     * Récupère le détail d'un artisanat par son ID.
      * Endpoint : GET /api/superadmin/dashboard/artisanats/{id}
      */
     @GetMapping("/artisanats/{id}")
@@ -193,6 +193,37 @@ public class SuperAdminDashboardController {
             Authentication authentication) {
         ContenuGlobalDTO artisanat = superAdminDashboardService.getDetailArtisanat(id);
         return ResponseEntity.ok(artisanat);
+    }
+
+
+    /**
+     * Récupère tous les utilisateurs de l'application.
+     * Endpoint : GET /api/superadmin/dashboard/utilisateurs
+     * @param authentication Authentification de l'utilisateur
+     * @return Liste de tous les utilisateurs
+     */
+    @GetMapping("/utilisateurs")
+    public ResponseEntity<List<UtilisateurSuperAdminDTO>> getAllUtilisateurs(Authentication authentication) {
+        List<UtilisateurSuperAdminDTO> utilisateurs = superAdminDashboardService.getAllUtilisateurs();
+        return ResponseEntity.ok(utilisateurs);
+    }
+
+
+    /**
+     * Active ou désactive un utilisateur.
+     * Endpoint : PATCH /api/superadmin/dashboard/utilisateurs/{id}/activation
+     * @param id ID de l'utilisateur
+     * @param actif Statut d'activation (true = actif, false = désactivé)
+     * @param authentication Authentification de l'utilisateur
+     * @return Réponse sans contenu (204)
+     */
+    @PatchMapping("/utilisateurs/{id}/activation")
+    public ResponseEntity<Void> toggleActivationUtilisateur(
+            @PathVariable Long id,
+            @RequestParam Boolean actif,
+            Authentication authentication) {
+        superAdminDashboardService.toggleActivationUtilisateur(id, actif);
+        return ResponseEntity.noContent().build();
     }
 }
 
