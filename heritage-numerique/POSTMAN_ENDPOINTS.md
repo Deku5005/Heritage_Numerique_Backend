@@ -1279,6 +1279,86 @@ Authorization: Bearer {token}
 ]
 ```
 
+### **7.8 Tous les Utilisateurs de l'Application**
+```http
+GET /api/superadmin/dashboard/utilisateurs
+Authorization: Bearer {token}
+```
+
+**Description :** Récupère tous les utilisateurs du système avec leurs informations détaillées.
+
+**Réponse :**
+```json
+[
+  {
+    "id": 1,
+    "nomComplet": "A.T. Amadou Traoré",
+    "role": "ROLE_ADMIN",
+    "telephone": "+223 76 12 34 56",
+    "email": "amadou@example.com",
+    "dateAjout": "2024-01-05T10:30:00",
+    "actif": true
+  },
+  {
+    "id": 2,
+    "nomComplet": "F.K. Fatoumata Keita",
+    "role": "ROLE_MEMBRE",
+    "telephone": "+221 77 98 76 54",
+    "email": "fatoumata@example.com",
+    "dateAjout": "2024-01-08T14:20:00",
+    "actif": true
+  },
+  {
+    "id": 3,
+    "nomComplet": "M.D. Moussa Diallo",
+    "role": "ROLE_MEMBRE",
+    "telephone": "+223 65 43 21 09",
+    "email": "moussa@example.com",
+    "dateAjout": "2024-01-12T09:15:00",
+    "actif": false
+  }
+]
+```
+
+**Notes :**
+- Le champ `nomComplet` est formaté avec les initiales du prénom et du nom suivies du nom complet : "P.N. Prenom Nom"
+- Le champ `actif` indique si le compte utilisateur est actif ou désactivé
+- Le `role` peut être `ROLE_ADMIN` (super-admin) ou `ROLE_MEMBRE` (utilisateur standard)
+
+### **7.9 Activer/Désactiver un Utilisateur**
+```http
+PATCH /api/superadmin/dashboard/utilisateurs/{id}/activation?actif=true
+Authorization: Bearer {token}
+```
+
+**Description :** Active ou désactive un utilisateur du système.
+
+**Paramètres :**
+- `id` (path) : ID de l'utilisateur
+- `actif` (query param) : `true` pour activer, `false` pour désactiver
+
+**Exemples :**
+
+Activer un utilisateur :
+```http
+PATCH /api/superadmin/dashboard/utilisateurs/3/activation?actif=true
+Authorization: Bearer {token}
+```
+
+Désactiver un utilisateur :
+```http
+PATCH /api/superadmin/dashboard/utilisateurs/3/activation?actif=false
+Authorization: Bearer {token}
+```
+
+**Réponse :** 
+- Code HTTP 204 (No Content) en cas de succès
+- Pas de corps de réponse
+
+**Note :** Un utilisateur désactivé ne pourra plus se connecter à l'application.
+
+---
+
 ### **7.2 Valider/Rejeter Publication**
 ```http
 POST /api/super-admin/demandes-publication/{demandeId}/valider
