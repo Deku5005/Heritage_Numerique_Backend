@@ -489,6 +489,50 @@ public class SuperAdminContenuService {
 
 
     /**
+     * Supprime un conte public existant.
+     */
+    @Transactional
+    public void supprimerContePublic(Long id, Long adminId) {
+        verifierSuperAdmin(adminId);
+        Contenu contenu = getAndVerifyContenuPublic(id, "CONTE");
+        contenuRepository.delete(contenu);
+    }
+
+
+    /**
+     * Supprime un artisanat public existant.
+     */
+    @Transactional
+    public void supprimerArtisanatPublic(Long id, Long adminId) {
+        verifierSuperAdmin(adminId);
+        Contenu contenu = getAndVerifyContenuPublic(id, "ARTISANAT");
+        contenuRepository.delete(contenu);
+    }
+
+
+    /**
+     * Supprime un proverbe public existant.
+     */
+    @Transactional
+    public void supprimerProverbePublic(Long id, Long adminId) {
+        verifierSuperAdmin(adminId);
+        Contenu contenu = getAndVerifyContenuPublic(id, "PROVERBE");
+        contenuRepository.delete(contenu);
+    }
+
+
+    /**
+     * Supprime une devinette publique existante.
+     */
+    @Transactional
+    public void supprimerDevinettePublic(Long id, Long adminId) {
+        verifierSuperAdmin(adminId);
+        Contenu contenu = getAndVerifyContenuPublic(id, "DEVINETTE");
+        contenuRepository.delete(contenu);
+    }
+
+
+    /**
      * Récupère tous les contenus publics.
      */
     @Transactional(readOnly = true)
