@@ -448,6 +448,62 @@ public class SuperAdminController {
 
 
     /**
+     * Supprime un conte public existant.
+     */
+    @DeleteMapping("/contenus-publics/conte/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> supprimerContePublic(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        superAdminContenuService.supprimerContePublic(id, adminId);
+        return ResponseEntity.ok("Conte public supprimé avec succès");
+    }
+
+
+    /**
+     * Supprime un artisanat public existant.
+     */
+    @DeleteMapping("/contenus-publics/artisanat/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> supprimerArtisanatPublic(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        superAdminContenuService.supprimerArtisanatPublic(id, adminId);
+        return ResponseEntity.ok("Artisanat public supprimé avec succès");
+    }
+
+
+    /**
+     * Supprime un proverbe public existant.
+     */
+    @DeleteMapping("/contenus-publics/proverbe/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> supprimerProverbePublic(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        superAdminContenuService.supprimerProverbePublic(id, adminId);
+        return ResponseEntity.ok("Proverbe public supprimé avec succès");
+    }
+
+
+    /**
+     * Supprime une devinette publique existante.
+     */
+    @DeleteMapping("/contenus-publics/devinette/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> supprimerDevinettePublic(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long adminId = getUserIdFromAuth(authentication);
+        superAdminContenuService.supprimerDevinettePublic(id, adminId);
+        return ResponseEntity.ok("Devinette publique supprimée avec succès");
+    }
+
+
+    /**
      * Récupère tous les contenus publics.
      * Accessible à tous les utilisateurs authentifiés.
      * * @return Liste des contenus publics

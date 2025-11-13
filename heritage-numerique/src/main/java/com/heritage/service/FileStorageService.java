@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Service pour gérer le stockage physique des fichiers uploadés.
  * Assure que les fichiers sont enregistrés dans le répertoire défini par 'file.upload-dir'.
- * Ce service bloque explicitement les fichiers PDF et TXT.
+ * Ce service bloque explicitement les fichiers PDF (sauf pour les contes) et TXT.
  */
 @Service
 public class FileStorageService {
@@ -37,7 +37,8 @@ public class FileStorageService {
         // --- 🚨 LOGIQUE D'EXCLUSION PDF/TXT 🚨 ---
         if (originalFilename != null) {
             String lowerCaseFilename = originalFilename.toLowerCase();
-            if (lowerCaseFilename.endsWith(".pdf")) {
+            // Autoriser les PDF pour les contes (sous-répertoire "conte")
+            if (lowerCaseFilename.endsWith(".pdf") && !"conte".equals(subDirectory)) {
                 throw new BadRequestException("Le téléchargement de fichiers PDF n'est pas autorisé par ce service.");
             }
             if (lowerCaseFilename.endsWith(".txt")) {
