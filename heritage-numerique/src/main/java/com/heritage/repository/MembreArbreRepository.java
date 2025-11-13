@@ -52,5 +52,14 @@ public interface MembreArbreRepository extends JpaRepository<MembreArbre, Long> 
      * @return Liste des membres liés à cet utilisateur
      */
     List<MembreArbre> findByUtilisateurLieId(Long utilisateurLieId);
+
+    /**
+     * Recherche tous les enfants d'un membre (où ce membre est soit le père, soit la mère).
+     * 
+     * @param pereId ID du père
+     * @param mereId ID de la mère (même valeur que pereId)
+     * @return Liste des enfants
+     */
+    List<MembreArbre> findByPereIdOrMereId(Long pereId, Long mereId);
 }
 
