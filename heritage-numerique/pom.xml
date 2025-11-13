@@ -89,11 +89,7 @@
             <artifactId>tika-core</artifactId>
             <version>2.9.1</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-parsers-standard-package</artifactId>
-            <version>2.9.1</version>
-        </dependency>
+
 
         <!-- Traduction simplifiée - MyMemory API -->
         <dependency>
@@ -144,11 +140,11 @@
         </dependency>
 
         <!-- H2 Database (base de données en mémoire pour les tests) -->
-        <dependency>
+       <!-- <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
-        </dependency>
+        </dependency>-->
     </dependencies>
 
     <build>

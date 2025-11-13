@@ -52,6 +52,8 @@ public class FileContentService {
             }
 
             // Nettoyer le contenu (supprimer les espaces multiples, etc.)
+            //Encoder en ASCII pour tenir compte des catactères speciaux
+
             contenu = contenu.trim()
                     .replaceAll("\\s+", " ")  // Remplacer les espaces multiples par un seul
                     .replaceAll("\\n\\s*\\n", "\n\n");  // Nettoyer les sauts de ligne multiples
