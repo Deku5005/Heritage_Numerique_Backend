@@ -30,11 +30,11 @@ public class SuperAdminInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Créer le superAdmin s'il n'existe pas
-        if (!utilisateurRepository.findByEmail("oumardolo27@gmail.com").isPresent()) {
+        if (!utilisateurRepository.findByEmail("diakitetenin99@gmail.com").isPresent()) {
             Utilisateur superAdmin = new Utilisateur();
-            superAdmin.setNom("Dolo");
-            superAdmin.setPrenom("Oumar");
-            superAdmin.setEmail("oumardolo27@gmail.com");
+            superAdmin.setNom("Diakité");
+            superAdmin.setPrenom("Niakalé");
+            superAdmin.setEmail("diakitetenin99@gmail.com");
             superAdmin.setMotDePasse(passwordEncoder.encode("admin123"));
             superAdmin.setRole("ROLE_ADMIN");
             superAdmin.setActif(true);
@@ -43,7 +43,7 @@ public class SuperAdminInitializer implements CommandLineRunner {
 
             utilisateurRepository.save(superAdmin);
             System.out.println("✓ SuperAdmin créé avec succès");
-            System.out.println("  Email: oumardolo27@gmail.com");
+            System.out.println("  Email: diakitetenin99@gmail.com");
             System.out.println("  Mot de passe: admin123");
         }
     }
