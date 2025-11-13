@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Contrôleur pour la gestion de l'arbre généalogique de famille.
  * Chaque famille a un seul arbre généalogique.
@@ -117,6 +119,28 @@ public class ArbreGenealogiqueController {
         
         MembreArbreDTO membre = arbreGenealogiqueService.getMembreArbreById(membreId);
         return ResponseEntity.ok(membre);
+    }
+
+    /**
+     * Récupère tous les membres de l'arbre généalogique liés à un membre spécifique.
+     * Cette méthode retourne récursivement tous les membres liés :
+     * - Descendants (enfants, petits-enfants, etc.)
+     * - Ascendants (parents, grands-parents, etc.)
+     * - Frères et sœurs
+     * 
+     * Endpoint : GET /api/arbre-genealogique/membre/{membreId}/membres-lies
+     * 
+     * @param membreId ID du membre de référence
+     * @param authentication Authentification de l'utilisateur
+     * @return Liste de tous les membres liés
+     */
+    @GetMapping("/membre/{membreId}/membres-lies")
+    public ResponseEntity<List<MembreArbreDTO>> getTousMembresLies(
+            @PathVariable Long membreId,
+            Authentication authentication) {
+        
+        List<MembreArbreDTO> membresLies = arbreGenealogiqueService.getTousMembresLies(membreId);
+        return ResponseEntity.ok(membresLies);
     }
 
     /**

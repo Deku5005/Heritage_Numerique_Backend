@@ -15,8 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -213,6 +212,110 @@ public class ArbreGenealogiqueService {
     }
 
     /**
+     * Récupère tous les membres de l'arbre généalogique liés à un membre spécifique.
+     * Inclut les descendants (enfants, petits-enfants, etc.), les ascendants (parents, grands-parents, etc.)
+     * et les frères et sœurs.
+     * L'ordre d'affichage est : Parent1 (père) -> Parent2 (mère) -> Membre de référence -> Autres membres
+     * 
+     * @param membreId ID du membre de référence
+     * @return Liste de tous les membres liés, triée par ordre de relation
+     */
+    @Transactional(readOnly = true)
+    public List<MembreArbreDTO> getTousMembresLies(Long membreId) {
+        MembreArbre membreReference = membreArbreRepository.findById(membreId)
+                .orElseThrow(() -> new NotFoundException("Membre de l'arbre non trouvé avec l'ID: " + membreId));
+
+        Set<Long> membresVisites = new HashSet<>();
+        Set<MembreArbre> membresLies = new HashSet<>();
+
+        // Récupérer récursivement tous les membres liés
+        collecterMembresLiesRecursif(membreReference, membresVisites, membresLies);
+
+        // Trier les membres : Parent1 (père) -> Parent2 (mère) -> Membre de référence -> Autres
+        List<MembreArbreDTO> membresTriees = new ArrayList<>();
+        
+        // 1. Ajouter le père (parent1) s'il existe
+        if (membreReference.getPere() != null && membresLies.contains(membreReference.getPere())) {
+            membresTriees.add(convertToMembreArbreDTO(membreReference.getPere()));
+        }
+        
+        // 2. Ajouter la mère (parent2) s'il existe
+        if (membreReference.getMere() != null && membresLies.contains(membreReference.getMere())) {
+            membresTriees.add(convertToMembreArbreDTO(membreReference.getMere()));
+        }
+        
+        // 3. Ajouter le membre de référence
+        membresTriees.add(convertToMembreArbreDTO(membreReference));
+        
+        // 4. Ajouter tous les autres membres (en excluant père, mère et membre de référence)
+        membresLies.stream()
+                .filter(m -> !m.getId().equals(membreId) && 
+                           (membreReference.getPere() == null || !m.getId().equals(membreReference.getPere().getId())) &&
+                           (membreReference.getMere() == null || !m.getId().equals(membreReference.getMere().getId())))
+                .map(this::convertToMembreArbreDTO)
+                .sorted((m1, m2) -> {
+                    // Trier les autres membres par date de naissance (du plus ancien au plus récent)
+                    if (m1.getDateNaissance() != null && m2.getDateNaissance() != null) {
+                        return m1.getDateNaissance().compareTo(m2.getDateNaissance());
+                    }
+                    return 0;
+                })
+                .forEach(membresTriees::add);
+
+        return membresTriees;
+    }
+
+    /**
+     * Méthode récursive pour collecter tous les membres liés à un membre donné.
+     * 
+     * @param membre Membre actuel
+     * @param membresVisites Set des IDs de membres déjà visités (éviter les boucles infinies)
+     * @param membresLies Set des membres liés collectés
+     */
+    private void collecterMembresLiesRecursif(MembreArbre membre, Set<Long> membresVisites, Set<MembreArbre> membresLies) {
+        // Éviter de revisiter un membre déjà traité
+        if (membre == null || membresVisites.contains(membre.getId())) {
+            return;
+        }
+
+        // Marquer comme visité et ajouter à la collection
+        membresVisites.add(membre.getId());
+        membresLies.add(membre);
+
+        // 1. Récupérer les ascendants (parents)
+        if (membre.getPere() != null) {
+            collecterMembresLiesRecursif(membre.getPere(), membresVisites, membresLies);
+        }
+        if (membre.getMere() != null) {
+            collecterMembresLiesRecursif(membre.getMere(), membresVisites, membresLies);
+        }
+
+        // 2. Récupérer les descendants (enfants)
+        List<MembreArbre> enfants = membreArbreRepository.findByPereIdOrMereId(membre.getId(), membre.getId());
+        for (MembreArbre enfant : enfants) {
+            collecterMembresLiesRecursif(enfant, membresVisites, membresLies);
+        }
+
+        // 3. Récupérer les frères et sœurs (qui partagent au moins un parent)
+        if (membre.getPere() != null) {
+            List<MembreArbre> fratrie = membreArbreRepository.findByPereId(membre.getPere().getId());
+            for (MembreArbre frere : fratrie) {
+                if (!frere.getId().equals(membre.getId())) {
+                    collecterMembresLiesRecursif(frere, membresVisites, membresLies);
+                }
+            }
+        }
+        if (membre.getMere() != null) {
+            List<MembreArbre> fratrie = membreArbreRepository.findByMereId(membre.getMere().getId());
+            for (MembreArbre frere : fratrie) {
+                if (!frere.getId().equals(membre.getId())) {
+                    collecterMembresLiesRecursif(frere, membresVisites, membresLies);
+                }
+            }
+        }
+    }
+
+    /**
      * Convertit une entité MembreArbre en DTO.
      */
     private MembreArbreDTO convertToMembreArbreDTO(MembreArbre membre) {
@@ -221,7 +324,7 @@ public class ArbreGenealogiqueService {
                 .nomComplet(membre.getNom() + " " + membre.getPrenom())
                 .dateNaissance(membre.getDateNaissance())
                 .lieuNaissance(membre.getLieuNaissance())
-                .relationFamiliale("Membre") // Valeur par défaut
+                .relationFamiliale(membre.getRelationFamiliale()) // Utiliser la vraie relation familiale
                 .telephone("") // Champ non disponible
                 .email("") // Champ non disponible
                 .biographie(membre.getBiographie())
