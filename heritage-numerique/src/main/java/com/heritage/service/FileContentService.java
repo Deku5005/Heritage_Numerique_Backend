@@ -123,4 +123,55 @@ public class FileContentService {
         
         return fichier.length();
     }
+
+    /**
+     * Lit une image et la retourne encodée en base64 avec le format data URI.
+     * 
+     * @param urlImage URL de l'image (ex: /uploads/images/image.png)
+     * @return String base64 avec format data:image/{type};base64,{data} ou null en cas d'erreur
+     */
+    public String lireImageBase64(String urlImage) {
+        if (urlImage == null || urlImage.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            // Construire le chemin complet du fichier
+            String cheminComplet = System.getProperty("user.dir") + urlImage;
+            File fichierImage = new File(cheminComplet);
+            
+            if (!fichierImage.exists()) {
+                System.err.println("❌ Image non trouvée: " + cheminComplet);
+                return null;
+            }
+
+            // Lire les bytes de l'image
+            byte[] imageBytes = Files.readAllBytes(fichierImage.toPath());
+            
+            // Détecter le type MIME de l'image
+            String typeMime = tika.detect(fichierImage);
+            
+            // Si ce n'est pas une image, retourner null
+            if (!typeMime.startsWith("image/")) {
+                System.err.println("⚠️ Le fichier n'est pas une image: " + typeMime);
+                return null;
+            }
+
+            // Encoder en base64
+            String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+            
+            // Construire le data URI
+            String dataUri = "data:" + typeMime + ";base64," + base64Image;
+            
+            System.out.println("✅ Image convertie en base64 avec succès (" + imageBytes.length + " bytes)");
+            return dataUri;
+
+        } catch (IOException e) {
+            System.err.println("❌ Erreur lors de la lecture de l'image: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.err.println("❌ Erreur inattendue lors de la conversion de l'image en base64: " + e.getMessage());
+            return null;
+        }
+    }
 }

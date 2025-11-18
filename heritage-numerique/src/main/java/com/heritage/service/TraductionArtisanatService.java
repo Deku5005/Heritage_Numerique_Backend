@@ -12,17 +12,20 @@ import java.util.Optional;
 
 /**
  * Service de traduction pour les artisanats.
- * Utilise le même service de traduction que les contes.
+ * Utilise DjeliaTranslationService pour traduire les artisanats en français, bambara et anglais.
  */
 @Service
 public class TraductionArtisanatService {
 
-    private final ServiceTraductionMyMemory serviceTraductionMyMemory;
+    private final DjeliaTranslationService djeliaTranslationService;
     private final ContenuRepository contenuRepository;
 
-    public TraductionArtisanatService(ServiceTraductionMyMemory serviceTraductionMyMemory,
+    // Définition de la langue source par défaut pour ce contexte
+    private static final String LANGUE_SOURCE_DEFAUT = "fra_Latn";
+
+    public TraductionArtisanatService(DjeliaTranslationService djeliaTranslationService,
                                      ContenuRepository contenuRepository) {
-        this.serviceTraductionMyMemory = serviceTraductionMyMemory;
+        this.djeliaTranslationService = djeliaTranslationService;
         this.contenuRepository = contenuRepository;
     }
 
@@ -47,10 +50,7 @@ public class TraductionArtisanatService {
             throw new RuntimeException("Le contenu avec l'ID " + artisanatId + " n'est pas un artisanat");
         }
 
-        // Vérifier la disponibilité du service de traduction
-        if (!serviceTraductionMyMemory.estDisponible()) {
-            throw new RuntimeException("Service de traduction non disponible");
-        }
+        // --- Le contrôle de disponibilité est retiré car DjeliaTranslationService gère le fallback en cas d'erreur API ---
 
         try {
             // Construire le contenu complet de l'artisanat
@@ -70,28 +70,33 @@ public class TraductionArtisanatService {
             }
             
             // Traduire le titre
-            Map<String, String> traductionsTitre = serviceTraductionMyMemory.traduireTitre(artisanat.getTitre());
+            Map<String, String> traductionsTitre = djeliaTranslationService.traduireTout(
+                    artisanat.getTitre(), LANGUE_SOURCE_DEFAUT);
             
             // Traduire la description
             Map<String, String> traductionsDescription = new HashMap<>();
             if (artisanat.getDescription() != null && !artisanat.getDescription().trim().isEmpty()) {
-                traductionsDescription = serviceTraductionMyMemory.traduireContenu(artisanat.getDescription());
+                traductionsDescription = djeliaTranslationService.traduireTout(
+                        artisanat.getDescription(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire le lieu
             Map<String, String> traductionsLieu = new HashMap<>();
             if (artisanat.getLieu() != null && !artisanat.getLieu().trim().isEmpty()) {
-                traductionsLieu = serviceTraductionMyMemory.traduireContenu(artisanat.getLieu());
+                traductionsLieu = djeliaTranslationService.traduireTout(
+                        artisanat.getLieu(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire la région
             Map<String, String> traductionsRegion = new HashMap<>();
             if (artisanat.getRegion() != null && !artisanat.getRegion().trim().isEmpty()) {
-                traductionsRegion = serviceTraductionMyMemory.traduireContenu(artisanat.getRegion());
+                traductionsRegion = djeliaTranslationService.traduireTout(
+                        artisanat.getRegion(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire le contenu complet
-            Map<String, String> traductionsContenu = serviceTraductionMyMemory.traduireContenu(contenuComplet.toString());
+            Map<String, String> traductionsContenu = djeliaTranslationService.traduireTout(
+                    contenuComplet.toString(), LANGUE_SOURCE_DEFAUT);
 
             // Construire le DTO de réponse
             return TraductionConteDTO.builder()
@@ -107,7 +112,7 @@ public class TraductionArtisanatService {
                     .traductionsRegion(traductionsRegion)
                     .traductionsCompletes(traductionsDescription)
                     .languesDisponibles(traductionsTitre.keySet())
-                    .langueSource("fr")
+                    .langueSource(LANGUE_SOURCE_DEFAUT)
                     .statutTraduction("SUCCES")
                     .build();
 

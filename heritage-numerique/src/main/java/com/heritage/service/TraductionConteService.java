@@ -1,5 +1,7 @@
 package com.heritage.service;
 
+
+
 import com.heritage.dto.TraductionConteDTO;
 import com.heritage.entite.Contenu;
 import com.heritage.repository.ContenuRepository;
@@ -13,26 +15,30 @@ import java.util.Optional;
 
 /**
  * Service de traduction pour les contes.
- * Utilise HuggingFace NLLB-200 (via ServiceTraductionMyMemory) pour traduire les contes en français, bambara et anglais.
+ * Utilisateur DjeliaTranslationService pour traduire les contes en français, bambara et anglais.
  */
 @Service
 public class TraductionConteService {
 
-    private final ServiceTraductionMyMemory serviceTraductionMyMemory;
+    // Remplacement de ServiceTraductionMyMemory par DjeliaTranslationService
+    private final DjeliaTranslationService djeliaTranslationService;
     private final ContenuRepository contenuRepository;
     private final FileContentService fileContentService;
 
-    public TraductionConteService(ServiceTraductionMyMemory serviceTraductionMyMemory,
+    // Définition de la langue source par défaut pour ce contexte
+    private static final String LANGUE_SOURCE_DEFAUT = "fra_Latn";
+
+    public TraductionConteService(DjeliaTranslationService djeliaTranslationService, // Nouveau service injecté
                                   ContenuRepository contenuRepository,
                                   FileContentService fileContentService) {
-        this.serviceTraductionMyMemory = serviceTraductionMyMemory;
+        this.djeliaTranslationService = djeliaTranslationService;
         this.contenuRepository = contenuRepository;
         this.fileContentService = fileContentService;
     }
 
     /**
      * Traduit un conte complet en français, bambara et anglais.
-     * * @param conteId ID du conte à traduire
+     * @param conteId ID du conte à traduire
      * @return DTO avec toutes les traductions
      */
     @Transactional(readOnly = true)
@@ -50,10 +56,7 @@ public class TraductionConteService {
             throw new RuntimeException("Le contenu avec l'ID " + conteId + " n'est pas un conte");
         }
 
-        // Vérifier la disponibilité du service de traduction
-        if (!serviceTraductionMyMemory.estDisponible()) {
-            throw new RuntimeException("Service de traduction non disponible");
-        }
+        // --- Le contrôle de disponibilité est retiré car DjeliaTranslationService gère le fallback en cas d'erreur API ---
 
         try {
             // 1. Récupérer le contenu principal du fichier pour la traduction
@@ -66,32 +69,36 @@ public class TraductionConteService {
             // --- Traduction des champs de métadonnées INDIVIDUELS (petits blocs) ---
 
             // Traduire le titre
-            Map<String, String> traductionsTitre = serviceTraductionMyMemory.traduireTitre(conte.getTitre());
+            Map<String, String> traductionsTitre = djeliaTranslationService.traduireTout(
+                    conte.getTitre(), LANGUE_SOURCE_DEFAUT);
 
             // Traduire la description
             Map<String, String> traductionsDescription = new HashMap<>();
             if (conte.getDescription() != null && !conte.getDescription().trim().isEmpty()) {
-                traductionsDescription = serviceTraductionMyMemory.traduireContenu(conte.getDescription());
+                traductionsDescription = djeliaTranslationService.traduireTout(
+                        conte.getDescription(), LANGUE_SOURCE_DEFAUT);
             }
 
             // Traduire le lieu
             Map<String, String> traductionsLieu = new HashMap<>();
             if (conte.getLieu() != null && !conte.getLieu().trim().isEmpty()) {
-                traductionsLieu = serviceTraductionMyMemory.traduireContenu(conte.getLieu());
+                traductionsLieu = djeliaTranslationService.traduireTout(
+                        conte.getLieu(), LANGUE_SOURCE_DEFAUT);
             }
 
             // Traduire la région
             Map<String, String> traductionsRegion = new HashMap<>();
             if (conte.getRegion() != null && !conte.getRegion().trim().isEmpty()) {
-                traductionsRegion = serviceTraductionMyMemory.traduireContenu(conte.getRegion());
+                traductionsRegion = djeliaTranslationService.traduireTout(
+                        conte.getRegion(), LANGUE_SOURCE_DEFAUT);
             }
 
             // 2. Traduire le CONTENU PRINCIPAL (texte narratif pur)
             Map<String, String> traductionsContenu = new HashMap<>();
             if (!contenuFichier.trim().isEmpty()) {
-                // CORRECTION: Traduire SEULEMENT le contenu pur du fichier.
-                // Cela évite la confusion du modèle avec le mélange des champs de métadonnées.
-                traductionsContenu = serviceTraductionMyMemory.traduireContenu(contenuFichier);
+                // Traduire SEULEMENT le contenu pur du fichier.
+                traductionsContenu = djeliaTranslationService.traduireTout(
+                        contenuFichier, LANGUE_SOURCE_DEFAUT);
             }
 
 
@@ -103,14 +110,13 @@ public class TraductionConteService {
                     .lieuOriginal(conte.getLieu())
                     .regionOriginale(conte.getRegion())
                     .traductionsTitre(traductionsTitre)
-                    .traductionsContenu(traductionsContenu) // Contient maintenant la traduction du texte narratif
+                    .traductionsContenu(traductionsContenu)
                     .traductionsDescription(traductionsDescription)
                     .traductionsLieu(traductionsLieu)
                     .traductionsRegion(traductionsRegion)
-                    // CORRECTION: Assigner les traductions du contenu complet à ce champ
-                    .traductionsCompletes(traductionsContenu)
+                    .traductionsCompletes(traductionsContenu) // Utilise la traduction du contenu
                     .languesDisponibles(traductionsTitre.keySet())
-                    .langueSource("fr")
+                    .langueSource(LANGUE_SOURCE_DEFAUT)
                     .statutTraduction("SUCCES")
                     .build();
 
@@ -122,17 +128,15 @@ public class TraductionConteService {
 
     /**
      * Lit le contenu d'un fichier uploadé (PDF, TXT, DOC, DOCX) via le service délégué.
-     * * @param urlFichier URL du fichier à lire
+     * @param urlFichier URL du fichier à lire
      * @return Contenu du fichier sous forme de texte
      */
     private String lireContenuFichier(String urlFichier) {
         return fileContentService.lireContenuFichier(urlFichier);
     }
 
-    // NOTE: Les méthodes privées lireFichierTexte, lireFichierPDF, lireFichierWord ne sont pas utilisées
-    // car le service délégué fileContentService est censé les gérer. Je les laisse par souci d'exhaustivité,
-    // mais elles devraient être supprimées si le FileContentService fait le travail.
-    // ... (méthodes privées non modifiées)
+    // NOTE: Les méthodes privées lireFichierTexte, lireFichierPDF, lireFichierWord n'ont pas été modifiées
+    // car elles n'étaient pas utilisées dans votre logique originale. Elles sont conservées telles quelles.
 
     /**
      * Lit un fichier texte simple.
