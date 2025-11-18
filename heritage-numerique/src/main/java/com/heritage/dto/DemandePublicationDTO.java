@@ -19,6 +19,9 @@ public class DemandePublicationDTO {
     private Long id;
     private Long idContenu;
     private String titreContenu;
+    private String typeContenu;
+    private Long idFamille;
+    private String nomFamille;
     private Long idDemandeur;
     private String nomDemandeur;
     private Long idValideur;
