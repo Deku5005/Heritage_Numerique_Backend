@@ -28,6 +28,7 @@ public class ConteDTO {
     private String statut; // BROUILLON, PUBLIE, EN_ATTENTE_VALIDATION
     private String urlFichier; // URL du fichier PDF/TXT si uploadé
     private String urlPhoto; // URL de la photo du conte
+    private String contenuFichier; // Contenu textuel du fichier (PDF/TXT/DOC) extrait
     private String lieu;
     private String region;
     private Long idFamille;

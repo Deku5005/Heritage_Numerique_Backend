@@ -477,16 +477,37 @@ public class ContenuService {
     }
 
     /**
+     * Récupère toutes les demandes de publication avec les informations complètes.
+     * Retourne toutes les demandes avec le nom du contenu, le type, le nom de la famille et le nom du demandeur.
+     * 
+     * @return Liste de toutes les demandes de publication
+     */
+    @Transactional(readOnly = true)
+    public List<DemandePublicationDTO> getAllDemandesPublication() {
+        List<DemandePublication> demandes = demandePublicationRepository.findAll();
+        
+        return demandes.stream()
+                .map(this::convertDemandeToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Convertit une entité DemandePublication en DTO.
      * 
      * @param demande Entité DemandePublication
      * @return DTO de la demande
      */
     private DemandePublicationDTO convertDemandeToDTO(DemandePublication demande) {
+        Contenu contenu = demande.getContenu();
+        Famille famille = contenu.getFamille();
+        
         return DemandePublicationDTO.builder()
                 .id(demande.getId())
-                .idContenu(demande.getContenu().getId())
-                .titreContenu(demande.getContenu().getTitre())
+                .idContenu(contenu.getId())
+                .titreContenu(contenu.getTitre())
+                .typeContenu(contenu.getTypeContenu())
+                .idFamille(famille != null ? famille.getId() : null)
+                .nomFamille(famille != null ? famille.getNom() : null)
                 .idDemandeur(demande.getDemandeur().getId())
                 .nomDemandeur(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom())
                 .idValideur(demande.getValideur() != null ? demande.getValideur().getId() : null)

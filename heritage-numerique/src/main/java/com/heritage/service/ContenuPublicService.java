@@ -25,13 +25,28 @@ public class ContenuPublicService {
     private final ContenuRepository contenuRepository;
     private final MembreFamilleRepository membreFamilleRepository;
     private final QuizRepository quizRepository;
+    private final FileContentService fileContentService;
+    private final TraductionConteService traductionConteService;
+    private final TraductionArtisanatService traductionArtisanatService;
+    private final TraductionProverbeService traductionProverbeService;
+    private final TraductionDevinetteService traductionDevinetteService;
 
     public ContenuPublicService(ContenuRepository contenuRepository,
                                MembreFamilleRepository membreFamilleRepository,
-                               QuizRepository quizRepository) {
+                               QuizRepository quizRepository,
+                               FileContentService fileContentService,
+                               TraductionConteService traductionConteService,
+                               TraductionArtisanatService traductionArtisanatService,
+                               TraductionProverbeService traductionProverbeService,
+                               TraductionDevinetteService traductionDevinetteService) {
         this.contenuRepository = contenuRepository;
         this.membreFamilleRepository = membreFamilleRepository;
         this.quizRepository = quizRepository;
+        this.fileContentService = fileContentService;
+        this.traductionConteService = traductionConteService;
+        this.traductionArtisanatService = traductionArtisanatService;
+        this.traductionProverbeService = traductionProverbeService;
+        this.traductionDevinetteService = traductionDevinetteService;
     }
 
     /**
@@ -115,6 +130,17 @@ public class ContenuPublicService {
                 .map(this::convertToQuizDTO)
                 .orElse(null);
 
+        // Lire le contenu du fichier si disponible
+        String contenuFichier = null;
+        if (conte.getUrlFichier() != null && !conte.getUrlFichier().trim().isEmpty()) {
+            try {
+                contenuFichier = fileContentService.lireContenuFichier(conte.getUrlFichier());
+            } catch (Exception e) {
+                System.err.println("❌ Erreur lors de la lecture du fichier pour le conte " + conte.getId() + ": " + e.getMessage());
+                contenuFichier = null;
+            }
+        }
+
         return ConteDTO.builder()
                 .id(conte.getId())
                 .titre(conte.getTitre())
@@ -128,6 +154,7 @@ public class ContenuPublicService {
                 .statut(conte.getStatut())
                 .urlFichier(conte.getUrlFichier())
                 .urlPhoto(conte.getUrlPhoto())
+                .contenuFichier(contenuFichier)
                 .lieu(conte.getLieu())
                 .region(conte.getRegion())
                 .idFamille(conte.getFamille() != null ? conte.getFamille().getId() : null)
@@ -354,6 +381,110 @@ public class ContenuPublicService {
                 .estCorrecte(proposition.getEstCorrecte())
                 .ordre(proposition.getOrdre())
                 .build();
+    }
+
+    // -------------------------------------------------------------------------
+    // --- Méthodes de Traduction pour Contenus Publics ---
+    // -------------------------------------------------------------------------
+
+    /**
+     * Traduit un conte public (statut PUBLIE) en français, bambara et anglais.
+     * 
+     * @param conteId ID du conte à traduire
+     * @return DTO avec toutes les traductions
+     * @throws RuntimeException Si le conte n'est pas trouvé, n'est pas public ou n'est pas un conte
+     */
+    @Transactional(readOnly = true)
+    public com.heritage.dto.TraductionConteDTO traduireContePublic(Long conteId) {
+        Contenu conte = contenuRepository.findById(conteId)
+                .orElseThrow(() -> new RuntimeException("Conte non trouvé avec l'ID: " + conteId));
+
+        // Vérifier que c'est bien un conte
+        if (!"CONTE".equals(conte.getTypeContenu())) {
+            throw new RuntimeException("Le contenu avec l'ID " + conteId + " n'est pas un conte");
+        }
+
+        // Vérifier que le conte est public
+        if (!"PUBLIE".equals(conte.getStatut())) {
+            throw new RuntimeException("Le conte avec l'ID " + conteId + " n'est pas public. Seuls les contes publics peuvent être traduits via cet endpoint.");
+        }
+
+        return traductionConteService.traduireConte(conteId);
+    }
+
+    /**
+     * Traduit un artisanat public (statut PUBLIE) en français, bambara et anglais.
+     * 
+     * @param artisanatId ID de l'artisanat à traduire
+     * @return DTO avec toutes les traductions
+     * @throws RuntimeException Si l'artisanat n'est pas trouvé, n'est pas public ou n'est pas un artisanat
+     */
+    @Transactional(readOnly = true)
+    public com.heritage.dto.TraductionConteDTO traduireArtisanatPublic(Long artisanatId) {
+        Contenu artisanat = contenuRepository.findById(artisanatId)
+                .orElseThrow(() -> new RuntimeException("Artisanat non trouvé avec l'ID: " + artisanatId));
+
+        // Vérifier que c'est bien un artisanat
+        if (!"ARTISANAT".equals(artisanat.getTypeContenu())) {
+            throw new RuntimeException("Le contenu avec l'ID " + artisanatId + " n'est pas un artisanat");
+        }
+
+        // Vérifier que l'artisanat est public
+        if (!"PUBLIE".equals(artisanat.getStatut())) {
+            throw new RuntimeException("L'artisanat avec l'ID " + artisanatId + " n'est pas public. Seuls les artisanats publics peuvent être traduits via cet endpoint.");
+        }
+
+        return traductionArtisanatService.traduireArtisanat(artisanatId);
+    }
+
+    /**
+     * Traduit un proverbe public (statut PUBLIE) en français, bambara et anglais.
+     * 
+     * @param proverbeId ID du proverbe à traduire
+     * @return DTO avec toutes les traductions
+     * @throws RuntimeException Si le proverbe n'est pas trouvé, n'est pas public ou n'est pas un proverbe
+     */
+    @Transactional(readOnly = true)
+    public com.heritage.dto.TraductionConteDTO traduireProverbePublic(Long proverbeId) {
+        Contenu proverbe = contenuRepository.findById(proverbeId)
+                .orElseThrow(() -> new RuntimeException("Proverbe non trouvé avec l'ID: " + proverbeId));
+
+        // Vérifier que c'est bien un proverbe
+        if (!"PROVERBE".equals(proverbe.getTypeContenu())) {
+            throw new RuntimeException("Le contenu avec l'ID " + proverbeId + " n'est pas un proverbe");
+        }
+
+        // Vérifier que le proverbe est public
+        if (!"PUBLIE".equals(proverbe.getStatut())) {
+            throw new RuntimeException("Le proverbe avec l'ID " + proverbeId + " n'est pas public. Seuls les proverbes publics peuvent être traduits via cet endpoint.");
+        }
+
+        return traductionProverbeService.traduireProverbe(proverbeId);
+    }
+
+    /**
+     * Traduit une devinette publique (statut PUBLIE) en français, bambara et anglais.
+     * 
+     * @param devinetteId ID de la devinette à traduire
+     * @return DTO avec toutes les traductions
+     * @throws RuntimeException Si la devinette n'est pas trouvée, n'est pas publique ou n'est pas une devinette
+     */
+    @Transactional(readOnly = true)
+    public com.heritage.dto.TraductionConteDTO traduireDevinettePublic(Long devinetteId) {
+        Contenu devinette = contenuRepository.findById(devinetteId)
+                .orElseThrow(() -> new RuntimeException("Devinette non trouvée avec l'ID: " + devinetteId));
+
+        // Vérifier que c'est bien une devinette
+        if (!"DEVINETTE".equals(devinette.getTypeContenu())) {
+            throw new RuntimeException("Le contenu avec l'ID " + devinetteId + " n'est pas une devinette");
+        }
+
+        // Vérifier que la devinette est publique
+        if (!"PUBLIE".equals(devinette.getStatut())) {
+            throw new RuntimeException("La devinette avec l'ID " + devinetteId + " n'est pas publique. Seules les devinettes publiques peuvent être traduites via cet endpoint.");
+        }
+
+        return traductionDevinetteService.traduireDevinette(devinetteId);
     }
 }
 

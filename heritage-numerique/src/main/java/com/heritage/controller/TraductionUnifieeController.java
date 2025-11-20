@@ -6,6 +6,15 @@ import com.heritage.service.TraductionConteService;
 import com.heritage.service.TraductionDevinetteService;
 import com.heritage.service.TraductionProverbeService;
 import com.heritage.service.FileContentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -13,13 +22,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Contrôleur unifié pour la gestion des traductions de tous les types de contenus.
- * Utilise HuggingFace NLLB-200 pour traduire les contenus en français, bambara et anglais.
+ * Utilise Djelia pour traduire les contenus en français, bambara et anglais.
  */
 @RestController
 @RequestMapping("/api/traduction")
+@CrossOrigin(origins = "*")
+@Tag(name = "🌐 Traduction", description = "Endpoints pour traduire les contenus (contes, artisanats, proverbes, devinettes) en français, bambara et anglais via l'API Djelia")
 public class TraductionUnifieeController {
 
     private final TraductionConteService traductionConteService;
@@ -30,11 +42,11 @@ public class TraductionUnifieeController {
     private final com.heritage.repository.ContenuRepository contenuRepository;
 
     public TraductionUnifieeController(TraductionConteService traductionConteService,
-                                      TraductionArtisanatService traductionArtisanatService,
-                                      TraductionProverbeService traductionProverbeService,
-                                      TraductionDevinetteService traductionDevinetteService,
-                                      FileContentService fileContentService,
-                                      com.heritage.repository.ContenuRepository contenuRepository) {
+                                       TraductionArtisanatService traductionArtisanatService,
+                                       TraductionProverbeService traductionProverbeService,
+                                       TraductionDevinetteService traductionDevinetteService,
+                                       FileContentService fileContentService,
+                                       com.heritage.repository.ContenuRepository contenuRepository) {
         this.traductionConteService = traductionConteService;
         this.traductionArtisanatService = traductionArtisanatService;
         this.traductionProverbeService = traductionProverbeService;
@@ -43,554 +55,416 @@ public class TraductionUnifieeController {
         this.contenuRepository = contenuRepository;
     }
 
+    // --- Méthode Générique pour gérer la traduction et les erreurs ---
+
+    private ResponseEntity<TraductionConteDTO> handleTranslationRequest(
+            Long id,
+            String typeContenu, // Utilisé pour le logging/erreurs (e.g., "conte", "artisanat")
+            String targetLang, // Langue spécifique, ou null pour toutes
+            java.util.function.Function<Long, TraductionConteDTO> serviceCall) {
+
+        System.out.println("⏳ Requête de traduction reçue pour " + typeContenu + " ID: " + id + (targetLang != null ? " en " + targetLang : " (toutes langues)"));
+
+        try {
+            TraductionConteDTO traduction = serviceCall.apply(id);
+
+            if (targetLang != null) {
+                traduction = filterTranslationByLanguage(traduction, targetLang);
+            }
+
+            System.out.println("✅ Traduction complétée avec succès pour " + typeContenu + " ID: " + id);
+            return ResponseEntity.ok(traduction);
+
+        } catch (RuntimeException e) {
+            System.err.println("❌ Erreur de traitement de la traduction (" + typeContenu + " ID: " + id + "): " + e.getMessage());
+
+            // Gérer spécifiquement les erreurs "non trouvé" (404)
+            if (e.getMessage().contains("Conte non trouvé") || e.getMessage().contains("n'est pas un conte")) {
+                return new ResponseEntity(
+                        Map.of("erreur", e.getMessage()),
+                        HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Pour toutes les autres erreurs (API Djelia, lecture fichier), retourne 500 Internal Server Error
+            return new ResponseEntity(
+                    Map.of("erreur", "Erreur interne lors de la traduction du " + typeContenu + ".", "detail", e.getMessage()),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    /**
+     * Filtre les traductions pour ne conserver que la langue cible spécifiée.
+     * Mappe les codes de langue courts (fr, en, bm) vers les codes Djelia (fra_Latn, en, bam_Latn).
+     */
+    private TraductionConteDTO filterTranslationByLanguage(TraductionConteDTO traduction, String targetLang) {
+        // Mapper les codes de langue courts vers les codes Djelia
+        String djeliaLangCode = mapToDjeliaLanguageCode(targetLang);
+        Set<String> langSet = Set.of(djeliaLangCode);
+
+        // Cette méthode modifie l'objet DTO en place
+        traduction.getTraductionsTitre().keySet().retainAll(langSet);
+        traduction.getTraductionsContenu().keySet().retainAll(langSet);
+        traduction.getTraductionsDescription().keySet().retainAll(langSet);
+        traduction.getTraductionsLieu().keySet().retainAll(langSet);
+        traduction.getTraductionsRegion().keySet().retainAll(langSet);
+        traduction.getTraductionsCompletes().keySet().retainAll(langSet);
+        traduction.setLanguesDisponibles(langSet);
+
+        return traduction;
+    }
+
+    /**
+     * Mappe les codes de langue courts (fr, en, bm) vers les codes Djelia (fra_Latn, eng_Latn, bam_Latn).
+     * 
+     * @param langCode Code de langue court
+     * @return Code de langue Djelia correspondant
+     */
+    private String mapToDjeliaLanguageCode(String langCode) {
+        if (langCode == null) {
+            return null;
+        }
+        switch (langCode.toLowerCase()) {
+            case "fr":
+                return "fra_Latn";
+            case "bm":
+                return "bam_Latn";
+            case "en":
+                return "eng_Latn"; // Djelia utilise "eng_Latn" pour l'anglais
+            default:
+                // Si c'est déjà un code Djelia ou inconnu, retourner tel quel
+                return langCode;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // --- CONTE Endpoints ---
+    // -------------------------------------------------------------------------
+
     /**
      * Traduit un conte complet en français, bambara et anglais.
-     * 
      * Endpoint : GET /api/traduction/conte/{conteId}
-     * 
-     * @param conteId ID du conte à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec toutes les traductions
      */
+    @Operation(
+        summary = "Traduire un conte dans toutes les langues",
+        description = "Traduit un conte complet (titre, description, contenu, lieu, région) en français, bambara et anglais via l'API Djelia"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Traduction réussie",
+                content = @Content(schema = @Schema(implementation = TraductionConteDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Conte non trouvé"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/conte/{conteId}")
     public ResponseEntity<TraductionConteDTO> traduireConte(
+            @Parameter(description = "ID du conte à traduire", required = true, example = "1")
             @PathVariable Long conteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionConteService.traduireConte(conteId);
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(conteId, "conte", null, traductionConteService::traduireConte);
     }
 
-    /**
-     * Traduit un conte en français uniquement.
-     * 
-     * Endpoint : GET /api/traduction/conte/{conteId}/fr
-     * 
-     * @param conteId ID du conte à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec la traduction française
-     */
+    @Operation(
+        summary = "Traduire un conte en français",
+        description = "Traduit un conte uniquement en français (retourne seulement la traduction française)"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/conte/{conteId}/fr")
     public ResponseEntity<TraductionConteDTO> traduireConteFrancais(
+            @Parameter(description = "ID du conte à traduire", required = true, example = "1")
             @PathVariable Long conteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionConteService.traduireConte(conteId);
-        // Filtrer pour ne garder que le français
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.setLanguesDisponibles(java.util.Set.of("fr"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(conteId, "conte", "fr", traductionConteService::traduireConte);
     }
 
-    /**
-     * Traduit un conte en anglais uniquement.
-     * 
-     * Endpoint : GET /api/traduction/conte/{conteId}/en
-     * 
-     * @param conteId ID du conte à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec la traduction anglaise
-     */
+    @Operation(
+        summary = "Traduire un conte en anglais",
+        description = "Traduit un conte uniquement en anglais (retourne seulement la traduction anglaise)"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/conte/{conteId}/en")
     public ResponseEntity<TraductionConteDTO> traduireConteAnglais(
+            @Parameter(description = "ID du conte à traduire", required = true, example = "1")
             @PathVariable Long conteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionConteService.traduireConte(conteId);
-        // Filtrer pour ne garder que l'anglais
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("en"));
-        traduction.setLanguesDisponibles(java.util.Set.of("en"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(conteId, "conte", "en", traductionConteService::traduireConte);
     }
 
-    /**
-     * Traduit un conte en bambara uniquement.
-     * 
-     * Endpoint : GET /api/traduction/conte/{conteId}/bm
-     * 
-     * @param conteId ID du conte à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec la traduction bambara
-     */
+    @Operation(
+        summary = "Traduire un conte en bambara",
+        description = "Traduit un conte uniquement en bambara (retourne seulement la traduction bambara)"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/conte/{conteId}/bm")
     public ResponseEntity<TraductionConteDTO> traduireConteBambara(
+            @Parameter(description = "ID du conte à traduire", required = true, example = "1")
             @PathVariable Long conteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionConteService.traduireConte(conteId);
-        // Filtrer pour ne garder que le bambara
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.setLanguesDisponibles(java.util.Set.of("bm"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(conteId, "conte", "bm", traductionConteService::traduireConte);
     }
+
+    // -------------------------------------------------------------------------
+    // --- ARTISANAT Endpoints ---
+    // -------------------------------------------------------------------------
 
     /**
      * Traduit un artisanat complet en français, bambara et anglais.
-     * 
      * Endpoint : GET /api/traduction/artisanat/{artisanatId}
-     * 
-     * @param artisanatId ID de l'artisanat à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec toutes les traductions
      */
+    @Operation(
+        summary = "Traduire un artisanat dans toutes les langues",
+        description = "Traduit un artisanat complet en français, bambara et anglais via l'API Djelia"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/artisanat/{artisanatId}")
     public ResponseEntity<TraductionConteDTO> traduireArtisanat(
+            @Parameter(description = "ID de l'artisanat à traduire", required = true, example = "1")
             @PathVariable Long artisanatId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionArtisanatService.traduireArtisanat(artisanatId);
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(artisanatId, "artisanat", null, traductionArtisanatService::traduireArtisanat);
     }
 
-    /**
-     * Traduit un artisanat en français uniquement.
-     * 
-     * Endpoint : GET /api/traduction/artisanat/{artisanatId}/fr
-     */
+    @Operation(summary = "Traduire un artisanat en français")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/artisanat/{artisanatId}/fr")
     public ResponseEntity<TraductionConteDTO> traduireArtisanatFrancais(
+            @Parameter(description = "ID de l'artisanat à traduire", required = true, example = "1")
             @PathVariable Long artisanatId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionArtisanatService.traduireArtisanat(artisanatId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.setLanguesDisponibles(java.util.Set.of("fr"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(artisanatId, "artisanat", "fr", traductionArtisanatService::traduireArtisanat);
     }
 
-    /**
-     * Traduit un artisanat en anglais uniquement.
-     * 
-     * Endpoint : GET /api/traduction/artisanat/{artisanatId}/en
-     */
+    @Operation(summary = "Traduire un artisanat en anglais")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/artisanat/{artisanatId}/en")
     public ResponseEntity<TraductionConteDTO> traduireArtisanatAnglais(
+            @Parameter(description = "ID de l'artisanat à traduire", required = true, example = "1")
             @PathVariable Long artisanatId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionArtisanatService.traduireArtisanat(artisanatId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("en"));
-        traduction.setLanguesDisponibles(java.util.Set.of("en"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(artisanatId, "artisanat", "en", traductionArtisanatService::traduireArtisanat);
     }
 
-    /**
-     * Traduit un artisanat en bambara uniquement.
-     * 
-     * Endpoint : GET /api/traduction/artisanat/{artisanatId}/bm
-     */
+    @Operation(summary = "Traduire un artisanat en bambara")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/artisanat/{artisanatId}/bm")
     public ResponseEntity<TraductionConteDTO> traduireArtisanatBambara(
+            @Parameter(description = "ID de l'artisanat à traduire", required = true, example = "1")
             @PathVariable Long artisanatId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionArtisanatService.traduireArtisanat(artisanatId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.setLanguesDisponibles(java.util.Set.of("bm"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(artisanatId, "artisanat", "bm", traductionArtisanatService::traduireArtisanat);
     }
+
+    // -------------------------------------------------------------------------
+    // --- PROVERBE Endpoints ---
+    // -------------------------------------------------------------------------
 
     /**
      * Traduit un proverbe complet en français, bambara et anglais.
-     * 
      * Endpoint : GET /api/traduction/proverbe/{proverbeId}
-     * 
-     * @param proverbeId ID du proverbe à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec toutes les traductions
      */
+    @Operation(
+        summary = "Traduire un proverbe dans toutes les langues",
+        description = "Traduit un proverbe complet en français, bambara et anglais via l'API Djelia"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/proverbe/{proverbeId}")
     public ResponseEntity<TraductionConteDTO> traduireProverbe(
+            @Parameter(description = "ID du proverbe à traduire", required = true, example = "1")
             @PathVariable Long proverbeId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionProverbeService.traduireProverbe(proverbeId);
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(proverbeId, "proverbe", null, traductionProverbeService::traduireProverbe);
     }
 
-    /**
-     * Traduit un proverbe en français uniquement.
-     * 
-     * Endpoint : GET /api/traduction/proverbe/{proverbeId}/fr
-     */
+    @Operation(summary = "Traduire un proverbe en français")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/proverbe/{proverbeId}/fr")
     public ResponseEntity<TraductionConteDTO> traduireProverbeFrancais(
+            @Parameter(description = "ID du proverbe à traduire", required = true, example = "1")
             @PathVariable Long proverbeId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionProverbeService.traduireProverbe(proverbeId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.setLanguesDisponibles(java.util.Set.of("fr"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(proverbeId, "proverbe", "fr", traductionProverbeService::traduireProverbe);
     }
 
-    /**
-     * Traduit un proverbe en anglais uniquement.
-     * 
-     * Endpoint : GET /api/traduction/proverbe/{proverbeId}/en
-     */
+    @Operation(summary = "Traduire un proverbe en anglais")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/proverbe/{proverbeId}/en")
     public ResponseEntity<TraductionConteDTO> traduireProverbeAnglais(
+            @Parameter(description = "ID du proverbe à traduire", required = true, example = "1")
             @PathVariable Long proverbeId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionProverbeService.traduireProverbe(proverbeId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("en"));
-        traduction.setLanguesDisponibles(java.util.Set.of("en"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(proverbeId, "proverbe", "en", traductionProverbeService::traduireProverbe);
     }
 
-    /**
-     * Traduit un proverbe en bambara uniquement.
-     * 
-     * Endpoint : GET /api/traduction/proverbe/{proverbeId}/bm
-     */
+    @Operation(summary = "Traduire un proverbe en bambara")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/proverbe/{proverbeId}/bm")
     public ResponseEntity<TraductionConteDTO> traduireProverbeBambara(
+            @Parameter(description = "ID du proverbe à traduire", required = true, example = "1")
             @PathVariable Long proverbeId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionProverbeService.traduireProverbe(proverbeId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.setLanguesDisponibles(java.util.Set.of("bm"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(proverbeId, "proverbe", "bm", traductionProverbeService::traduireProverbe);
     }
+
+    // -------------------------------------------------------------------------
+    // --- DEVINETTE Endpoints ---
+    // -------------------------------------------------------------------------
 
     /**
      * Traduit une devinette complète en français, bambara et anglais.
-     * 
      * Endpoint : GET /api/traduction/devinette/{devinetteId}
-     * 
-     * @param devinetteId ID de la devinette à traduire
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec toutes les traductions
      */
+    @Operation(
+        summary = "Traduire une devinette dans toutes les langues",
+        description = "Traduit une devinette complète en français, bambara et anglais via l'API Djelia"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/devinette/{devinetteId}")
     public ResponseEntity<TraductionConteDTO> traduireDevinette(
+            @Parameter(description = "ID de la devinette à traduire", required = true, example = "1")
             @PathVariable Long devinetteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionDevinetteService.traduireDevinette(devinetteId);
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(devinetteId, "devinette", null, traductionDevinetteService::traduireDevinette);
     }
 
-    /**
-     * Traduit une devinette en français uniquement.
-     * 
-     * Endpoint : GET /api/traduction/devinette/{devinetteId}/fr
-     */
+    @Operation(summary = "Traduire une devinette en français")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/devinette/{devinetteId}/fr")
     public ResponseEntity<TraductionConteDTO> traduireDevinetteFrancais(
+            @Parameter(description = "ID de la devinette à traduire", required = true, example = "1")
             @PathVariable Long devinetteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionDevinetteService.traduireDevinette(devinetteId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("fr"));
-        traduction.setLanguesDisponibles(java.util.Set.of("fr"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(devinetteId, "devinette", "fr", traductionDevinetteService::traduireDevinette);
     }
 
-    /**
-     * Traduit une devinette en anglais uniquement.
-     * 
-     * Endpoint : GET /api/traduction/devinette/{devinetteId}/en
-     */
+    @Operation(summary = "Traduire une devinette en anglais")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/devinette/{devinetteId}/en")
     public ResponseEntity<TraductionConteDTO> traduireDevinetteAnglais(
+            @Parameter(description = "ID de la devinette à traduire", required = true, example = "1")
             @PathVariable Long devinetteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionDevinetteService.traduireDevinette(devinetteId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("en"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("en"));
-        traduction.setLanguesDisponibles(java.util.Set.of("en"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(devinetteId, "devinette", "en", traductionDevinetteService::traduireDevinette);
     }
 
-    /**
-     * Traduit une devinette en bambara uniquement.
-     * 
-     * Endpoint : GET /api/traduction/devinette/{devinetteId}/bm
-     */
+    @Operation(summary = "Traduire une devinette en bambara")
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/devinette/{devinetteId}/bm")
     public ResponseEntity<TraductionConteDTO> traduireDevinetteBambara(
+            @Parameter(description = "ID de la devinette à traduire", required = true, example = "1")
             @PathVariable Long devinetteId,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionDevinetteService.traduireDevinette(devinetteId);
-        traduction.getTraductionsTitre().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsContenu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsDescription().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsLieu().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsRegion().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.getTraductionsCompletes().keySet().retainAll(java.util.Set.of("bm"));
-        traduction.setLanguesDisponibles(java.util.Set.of("bm"));
-        return ResponseEntity.ok(traduction);
+
+        return handleTranslationRequest(devinetteId, "devinette", "bm", traductionDevinetteService::traduireDevinette);
     }
+
+    // -------------------------------------------------------------------------
+    // --- Autres Endpoints ---
+    // -------------------------------------------------------------------------
 
     /**
      * Traduit un contenu avec une langue source spécifique.
-     * 
-     * Endpoint : GET /api/traduction/conte/{conteId}/from/{langueSource}
-     * 
-     * @param conteId ID du conte à traduire
-     * @param langueSource Langue source (fr, en, bm)
-     * @param authentication Authentification de l'utilisateur
-     * @return DTO avec les traductions depuis la langue source spécifiée
+     * * NOTE: La méthode de service `traduireConte` actuelle utilise par défaut "fr" comme source.
+     * Pour supporter dynamiquement une autre source, il faudrait une méthode de service
+     * `traduireConte(Long conteId, String sourceLang)` que nous n'avons pas implémentée.
+     * Cet endpoint reste donc inchangé et renvoie une réponse basée sur la traduction
+     * par défaut (source FR).
+     * * Endpoint : GET /api/traduction/conte/{conteId}/from/{langueSource}
      */
     @GetMapping("/conte/{conteId}/from/{langueSource}")
     public ResponseEntity<TraductionConteDTO> traduireConteDepuisLangue(
             @PathVariable Long conteId,
             @PathVariable String langueSource,
             Authentication authentication) {
-        
-        TraductionConteDTO traduction = traductionConteService.traduireConte(conteId);
-        
-        // Modifier la langue source
-        traduction.setLangueSource(langueSource);
-        
-        // Filtrer les traductions selon la langue source
-        if ("fr".equals(langueSource)) {
-            // Garder toutes les langues
-        } else if ("en".equals(langueSource)) {
-            // Traduire depuis l'anglais vers les autres langues
-            // (implémentation simplifiée - dans une vraie app, il faudrait re-traduire)
-        } else if ("bm".equals(langueSource)) {
-            // Traduire depuis le bambara vers les autres langues
-            // (implémentation simplifiée - dans une vraie app, il faudrait re-traduire)
-        }
-        
-        return ResponseEntity.ok(traduction);
+
+        // Utilisation de la méthode générique de gestion d'erreurs
+        return handleTranslationRequest(conteId, "conte", null, id -> {
+            TraductionConteDTO traduction = traductionConteService.traduireConte(id);
+            // Simuler la source pour le DTO de retour (la traduction réelle reste basée sur FR)
+            traduction.setLangueSource(langueSource);
+            return traduction;
+        });
     }
 
     /**
      * Affiche le contenu d'un fichier uploadé.
-     * 
-     * Endpoint : GET /api/traduction/conte/{conteId}/fichier
-     * 
-     * @param conteId ID du conte
-     * @param authentication Authentification de l'utilisateur
-     * @return Contenu du fichier
+     * * Endpoint : GET /api/traduction/conte/{conteId}/fichier
      */
     @GetMapping("/conte/{conteId}/fichier")
     public ResponseEntity<Map<String, String>> afficherContenuFichier(
             @PathVariable Long conteId,
             Authentication authentication) {
-        
+
         // Récupérer le conte
         Optional<com.heritage.entite.Contenu> conteOpt = contenuRepository.findById(conteId);
         if (conteOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        
+
         com.heritage.entite.Contenu conte = conteOpt.get();
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("idConte", conte.getId().toString());
         response.put("titre", conte.getTitre());
         response.put("urlFichier", conte.getUrlFichier());
-        
-        if (conte.getUrlFichier() != null && !conte.getUrlFichier().trim().isEmpty()) {
-            // Lire le contenu réel du fichier
-            String contenuFichier = lireContenuFichier(conte.getUrlFichier());
-            response.put("contenuFichier", contenuFichier);
-            
-            // Déterminer le type de fichier
-            String extension = conte.getUrlFichier().toLowerCase();
-            if (extension.endsWith(".pdf")) {
-                response.put("typeFichier", "PDF");
-            } else if (extension.endsWith(".txt")) {
-                response.put("typeFichier", "TXT");
-            } else if (extension.endsWith(".doc") || extension.endsWith(".docx")) {
-                response.put("typeFichier", "WORD");
+
+        try {
+            if (conte.getUrlFichier() != null && !conte.getUrlFichier().trim().isEmpty()) {
+                // Lire le contenu réel du fichier via le service délégué
+                String contenuFichier = lireContenuFichier(conte.getUrlFichier());
+                response.put("contenuFichier", contenuFichier);
+
+                // Déterminer le type de fichier
+                String extension = conte.getUrlFichier().toLowerCase();
+                if (extension.endsWith(".pdf")) {
+                    response.put("typeFichier", "PDF");
+                } else if (extension.endsWith(".txt")) {
+                    response.put("typeFichier", "TXT");
+                } else if (extension.endsWith(".doc") || extension.endsWith(".docx")) {
+                    response.put("typeFichier", "WORD");
+                } else {
+                    response.put("typeFichier", "AUTRE");
+                }
+                response.put("statut", "Fichier trouvé et lu");
             } else {
-                response.put("typeFichier", "AUTRE");
+                response.put("contenuFichier", "Aucun fichier uploadé");
+                response.put("typeFichier", "N/A");
+                response.put("statut", "Aucun fichier");
             }
-            response.put("statut", "Fichier trouvé et lu");
-        } else {
-            response.put("contenuFichier", "Aucun fichier uploadé");
-            response.put("typeFichier", "N/A");
-            response.put("statut", "Aucun fichier");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de l'affichage du contenu du fichier: " + e.getMessage());
+            response.put("erreur", "Impossible de lire le fichier");
+            response.put("detail", e.getMessage());
+            response.put("statut", "ERREUR LECTURE FICHIER");
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        
-        return ResponseEntity.ok(response);
     }
 
     /**
      * Lit le contenu d'un fichier uploadé (PDF, TXT, DOC, DOCX).
-     * 
-     * @param urlFichier URL du fichier à lire
-     * @return Contenu du fichier sous forme de texte
      */
     private String lireContenuFichier(String urlFichier) {
         return fileContentService.lireContenuFichier(urlFichier);
     }
 
-    /**
-     * Lit un fichier texte simple.
-     */
-    private String lireFichierTexte(String urlFichier) {
-        try {
-            // Construire le chemin complet du fichier
-            String cheminComplet = System.getProperty("user.dir") + urlFichier;
-            java.io.File fichier = new java.io.File(cheminComplet);
-            
-            if (!fichier.exists()) {
-                System.err.println("❌ Fichier non trouvé: " + cheminComplet);
-                return "Fichier texte non trouvé: " + urlFichier;
-            }
-            
-            // Lire le contenu du fichier texte
-            StringBuilder contenu = new StringBuilder();
-            contenu.append("=== CONTENU DU FICHIER TEXTE ===\n");
-            contenu.append("Fichier: ").append(fichier.getName()).append("\n");
-            contenu.append("Taille: ").append(fichier.length()).append(" bytes\n\n");
-            
-            // Lire le contenu réel du fichier
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(fichier))) {
-                String ligne;
-                while ((ligne = reader.readLine()) != null) {
-                    contenu.append(ligne).append("\n");
-                }
-            }
-            
-            return contenu.toString();
-            
-        } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la lecture du fichier texte: " + e.getMessage());
-            return "Erreur lors de la lecture du fichier texte: " + e.getMessage();
-        }
-    }
-
-    /**
-     * Lit un fichier PDF.
-     */
-    private String lireFichierPDF(String urlFichier) {
-        try {
-            // Construire le chemin complet du fichier
-            String cheminComplet = System.getProperty("user.dir") + urlFichier;
-            java.io.File fichier = new java.io.File(cheminComplet);
-            
-            if (!fichier.exists()) {
-                System.err.println("❌ Fichier non trouvé: " + cheminComplet);
-                return "Fichier PDF non trouvé: " + urlFichier;
-            }
-            
-            // Lire le contenu du fichier PDF (simulation pour l'instant)
-            // Dans une vraie implémentation, utiliser Apache Tika ou PDFBox
-            StringBuilder contenu = new StringBuilder();
-            contenu.append("=== CONTENU DU FICHIER PDF ===\n");
-            contenu.append("Fichier: ").append(fichier.getName()).append("\n");
-            contenu.append("Taille: ").append(fichier.length()).append(" bytes\n");
-            contenu.append("Chemin: ").append(cheminComplet).append("\n\n");
-            
-            // Simulation du contenu PDF
-            contenu.append("L'épopée de Soundjata Keïta\n");
-            contenu.append("Fondateur de l'Empire du Mali\n\n");
-            contenu.append("Soundjata Keïta était un prince du royaume du Manding...\n");
-            contenu.append("Il a unifié les royaumes mandingues et créé l'Empire du Mali...\n");
-            contenu.append("Sa mère était Sogolon Kedjou, une princesse du royaume de Do...\n");
-            contenu.append("Il a vaincu Soumaoro Kanté à la bataille de Kirina...\n");
-            contenu.append("Soundjata est devenu le premier empereur du Mali...\n");
-            
-            return contenu.toString();
-            
-        } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la lecture du fichier PDF: " + e.getMessage());
-            return "Erreur lors de la lecture du fichier PDF: " + e.getMessage();
-        }
-    }
-
-    /**
-     * Lit un fichier Word (DOC/DOCX).
-     */
-    private String lireFichierWord(String urlFichier) {
-        try {
-            // Construire le chemin complet du fichier
-            String cheminComplet = System.getProperty("user.dir") + urlFichier;
-            java.io.File fichier = new java.io.File(cheminComplet);
-            
-            if (!fichier.exists()) {
-                System.err.println("❌ Fichier non trouvé: " + cheminComplet);
-                return "Fichier Word non trouvé: " + urlFichier;
-            }
-            
-            // Simulation du contenu Word (dans une vraie implémentation, utiliser Apache POI)
-            StringBuilder contenu = new StringBuilder();
-            contenu.append("=== CONTENU DU FICHIER WORD ===\n");
-            contenu.append("Fichier: ").append(fichier.getName()).append("\n");
-            contenu.append("Taille: ").append(fichier.length()).append(" bytes\n");
-            contenu.append("Chemin: ").append(cheminComplet).append("\n\n");
-            
-            // Simulation du contenu Word
-            contenu.append("Document Word - Conte traditionnel\n");
-            contenu.append("L'histoire de Soundjata Keïta\n\n");
-            contenu.append("Chapitre 1: La naissance de Soundjata\n");
-            contenu.append("Soundjata est né dans le royaume du Manding...\n\n");
-            contenu.append("Chapitre 2: L'exil\n");
-            contenu.append("Après la mort de son père, Soundjata a dû s'exiler...\n\n");
-            contenu.append("Chapitre 3: Le retour et la victoire\n");
-            contenu.append("Soundjata est revenu pour réclamer son trône...\n");
-            
-            return contenu.toString();
-            
-        } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la lecture du fichier Word: " + e.getMessage());
-            return "Erreur lors de la lecture du fichier Word: " + e.getMessage();
-        }
-    }
+    // NOTE: Les méthodes privées de lecture de fichiers (lireFichierTexte, lireFichierPDF, lireFichierWord)
+    // ont été supprimées car elles existent déjà dans TraductionConteService et sont redondantes ici.
+    // L'appel au service délégué `fileContentService.lireContenuFichier(urlFichier)` est suffisant.
 }

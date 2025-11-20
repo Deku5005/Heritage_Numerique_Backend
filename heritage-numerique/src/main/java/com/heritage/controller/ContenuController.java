@@ -25,6 +25,7 @@ import java.util.List;
  * - POST /api/contenus/demandes/{demandeId}/rejeter : rejeter publication (SUPERADMIN uniquement)
  * - GET /api/contenus/publics : récupérer les contenus publics (tous)
  * - GET /api/contenus/famille/{familleId} : récupérer les contenus privés (membres uniquement)
+ * - GET /api/contenus/demandes : récupérer toutes les demandes de publication avec nom contenu, type, nom famille et nom demandeur (ADMIN/MEMBRE)
  * - GET /api/contenus/demandes/famille/{familleId} : récupérer toutes les demandes de publication d'une famille (membres uniquement)
  * - GET /api/contenus/public/{contenuId}/avec-quiz : récupérer un contenu publique avec son quiz et ses questions (tous)
  */
@@ -167,6 +168,19 @@ public class ContenuController {
         
         Long utilisateurId = getUserIdFromAuth(authentication);
         List<DemandePublicationDTO> demandes = contenuService.getDemandesPublicationFamille(familleId, utilisateurId);
+        return ResponseEntity.ok(demandes);
+    }
+
+    /**
+     * Récupère toutes les demandes de publication avec les informations complètes.
+     * Retourne toutes les demandes avec le nom du contenu, le type, le nom de la famille et le nom du demandeur.
+     * 
+     * @return Liste de toutes les demandes de publication
+     */
+    @GetMapping("/demandes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBRE')")
+    public ResponseEntity<List<DemandePublicationDTO>> getAllDemandesPublication() {
+        List<DemandePublicationDTO> demandes = contenuService.getAllDemandesPublication();
         return ResponseEntity.ok(demandes);
     }
 

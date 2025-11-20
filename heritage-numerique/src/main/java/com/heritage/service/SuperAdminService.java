@@ -221,10 +221,16 @@ public class SuperAdminService {
      * @return DTO
      */
     private DemandePublicationDTO convertDemandeToDTO(DemandePublication demande) {
+        com.heritage.entite.Contenu contenu = demande.getContenu();
+        com.heritage.entite.Famille famille = contenu.getFamille();
+        
         return DemandePublicationDTO.builder()
                 .id(demande.getId())
-                .idContenu(demande.getContenu().getId())
-                .titreContenu(demande.getContenu().getTitre())
+                .idContenu(contenu.getId())
+                .titreContenu(contenu.getTitre())
+                .typeContenu(contenu.getTypeContenu())
+                .idFamille(famille != null ? famille.getId() : null)
+                .nomFamille(famille != null ? famille.getNom() : null)
                 .idDemandeur(demande.getDemandeur().getId())
                 .nomDemandeur(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom())
                 .idValideur(demande.getValideur() != null ? demande.getValideur().getId() : null)

@@ -12,17 +12,20 @@ import java.util.Optional;
 
 /**
  * Service de traduction pour les proverbes.
- * Utilise le même service de traduction que les contes.
+ * Utilise DjeliaTranslationService pour traduire les proverbes en français, bambara et anglais.
  */
 @Service
 public class TraductionProverbeService {
 
-    private final ServiceTraductionMyMemory serviceTraductionMyMemory;
+    private final DjeliaTranslationService djeliaTranslationService;
     private final ContenuRepository contenuRepository;
 
-    public TraductionProverbeService(ServiceTraductionMyMemory serviceTraductionMyMemory,
+    // Définition de la langue source par défaut pour ce contexte
+    private static final String LANGUE_SOURCE_DEFAUT = "fra_Latn";
+
+    public TraductionProverbeService(DjeliaTranslationService djeliaTranslationService,
                                    ContenuRepository contenuRepository) {
-        this.serviceTraductionMyMemory = serviceTraductionMyMemory;
+        this.djeliaTranslationService = djeliaTranslationService;
         this.contenuRepository = contenuRepository;
     }
 
@@ -47,10 +50,7 @@ public class TraductionProverbeService {
             throw new RuntimeException("Le contenu avec l'ID " + proverbeId + " n'est pas un proverbe");
         }
 
-        // Vérifier la disponibilité du service de traduction
-        if (!serviceTraductionMyMemory.estDisponible()) {
-            throw new RuntimeException("Service de traduction non disponible");
-        }
+        // --- Le contrôle de disponibilité est retiré car DjeliaTranslationService gère le fallback en cas d'erreur API ---
 
         try {
             // Construire le contenu complet du proverbe
@@ -70,28 +70,33 @@ public class TraductionProverbeService {
             }
             
             // Traduire le titre
-            Map<String, String> traductionsTitre = serviceTraductionMyMemory.traduireTitre(proverbe.getTitre());
+            Map<String, String> traductionsTitre = djeliaTranslationService.traduireTout(
+                    proverbe.getTitre(), LANGUE_SOURCE_DEFAUT);
             
             // Traduire la description
             Map<String, String> traductionsDescription = new HashMap<>();
             if (proverbe.getDescription() != null && !proverbe.getDescription().trim().isEmpty()) {
-                traductionsDescription = serviceTraductionMyMemory.traduireContenu(proverbe.getDescription());
+                traductionsDescription = djeliaTranslationService.traduireTout(
+                        proverbe.getDescription(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire le lieu
             Map<String, String> traductionsLieu = new HashMap<>();
             if (proverbe.getLieu() != null && !proverbe.getLieu().trim().isEmpty()) {
-                traductionsLieu = serviceTraductionMyMemory.traduireContenu(proverbe.getLieu());
+                traductionsLieu = djeliaTranslationService.traduireTout(
+                        proverbe.getLieu(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire la région
             Map<String, String> traductionsRegion = new HashMap<>();
             if (proverbe.getRegion() != null && !proverbe.getRegion().trim().isEmpty()) {
-                traductionsRegion = serviceTraductionMyMemory.traduireContenu(proverbe.getRegion());
+                traductionsRegion = djeliaTranslationService.traduireTout(
+                        proverbe.getRegion(), LANGUE_SOURCE_DEFAUT);
             }
             
             // Traduire le contenu complet
-            Map<String, String> traductionsContenu = serviceTraductionMyMemory.traduireContenu(contenuComplet.toString());
+            Map<String, String> traductionsContenu = djeliaTranslationService.traduireTout(
+                    contenuComplet.toString(), LANGUE_SOURCE_DEFAUT);
 
             // Construire le DTO de réponse
             return TraductionConteDTO.builder()
@@ -107,7 +112,7 @@ public class TraductionProverbeService {
                     .traductionsRegion(traductionsRegion)
                     .traductionsCompletes(traductionsDescription)
                     .languesDisponibles(traductionsTitre.keySet())
-                    .langueSource("fr")
+                    .langueSource(LANGUE_SOURCE_DEFAUT)
                     .statutTraduction("SUCCES")
                     .build();
 
