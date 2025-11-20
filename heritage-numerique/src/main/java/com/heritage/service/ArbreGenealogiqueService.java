@@ -374,18 +374,11 @@ public class ArbreGenealogiqueService {
 
         // 5. Upload de la photo si fournie
         if (request.getPhoto() != null && !request.getPhoto().isEmpty()) {
-            try {
-                // 1. Appel du service de stockage centralisé (retourne /uploads/images/uuid.jpg)
-                String fullPath = fileStorageService.storeFile(request.getPhoto(), "images");
-
-                // 2. 🔑 Correction : Retirer le préfixe '/uploads/' pour l'enregistrement en DB
-                // Ceci assure le format 'images/uuid.jpg' pour l'affichage Flutter
-                String relativePath = fullPath.replace("/uploads/", "");
-
-                membreArbre.setPhotoUrl(relativePath);
-            } catch (IOException e) {
-                throw new BadRequestException("Erreur lors de l'upload de la photo : " + e.getMessage());
-            }
+            // 🔑 ADAPTATION: Utiliser la même logique que ContenuCreationService
+            // La méthode handleFileUpload détermine automatiquement le sous-dossier "images"
+            // et retourne le chemin complet avec /uploads/ pour stockage en DB
+            String urlPhoto = handleFileUpload(request.getPhoto(), "photo");
+            membreArbre.setPhotoUrl(urlPhoto);
         }
 
         // 6. Définir les relations familiales si fournies
@@ -560,6 +553,27 @@ public class ArbreGenealogiqueService {
      */
     private LocalDate parseDateNaissance(LocalDate dateNaissance) {
         return dateNaissance; // Si c'est déjà un LocalDate, le retourner tel quel
+    }
+
+    /**
+     * Gère la logique de détermination du sous-dossier et appelle le service de stockage (avec validation).
+     * Utilisée pour tous les fichiers qui nécessitent une validation de type de fichier (images, vidéos).
+     * Même logique que ContenuCreationService pour assurer la cohérence.
+     */
+    private String handleFileUpload(MultipartFile fichier, String type) {
+        // 1. Déterminer le sous-dossier de destination (Logique métier)
+        // Pour les images, toutes vont dans le dossier 'images' (comme pour les contenus)
+        String sousDossier = "images";
+
+        // 2. Déléger l'opération de stockage au service externe (Contrat technique)
+        try {
+            // L'appel à storeFile() dans FileStorageService retourne /uploads/images/uuid.jpg
+            // Ce chemin complet est stocké en DB (comme pour les contenus)
+            return fileStorageService.storeFile(fichier, sousDossier);
+        } catch (IOException e) {
+            // 3. Gérer l'exception de stockage selon les règles du service métier
+            throw new BadRequestException("Erreur lors de la sauvegarde du fichier: " + e.getMessage());
+        }
     }
 
     /**
