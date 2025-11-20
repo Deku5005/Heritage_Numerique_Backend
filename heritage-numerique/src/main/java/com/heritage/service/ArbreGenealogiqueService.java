@@ -2,7 +2,9 @@ package com.heritage.service;
 
 import com.heritage.dto.AjoutMembreArbreRequest;
 import com.heritage.dto.ArbreGenealogiqueDTO;
+import com.heritage.dto.ArbreGenealogiqueHierarchiqueDTO;
 import com.heritage.dto.MembreArbreDTO;
+import com.heritage.dto.NoeudArbreDTO;
 import com.heritage.entite.*;
 import com.heritage.exception.BadRequestException;
 import com.heritage.exception.NotFoundException;
@@ -99,6 +101,214 @@ public class ArbreGenealogiqueService {
                         .map(this::convertToMembreArbreDTO)
                         .collect(Collectors.toList()))
                 .build();
+    }
+
+    /**
+     * Récupère l'arbre généalogique d'une famille sous forme hiérarchique.
+     * Structure optimisée pour l'affichage dans Flutter (style MyHeritage).
+     * 
+     * @param familleId ID de la famille
+     * @return Arbre généalogique hiérarchique
+     */
+    @Transactional(readOnly = true)
+    public ArbreGenealogiqueHierarchiqueDTO getArbreHierarchiqueByFamille(Long familleId) {
+        // Vérifier que la famille existe
+        Famille famille = familleRepository.findById(familleId)
+                .orElseThrow(() -> new NotFoundException("Famille non trouvée"));
+
+        // Récupérer l'arbre généalogique de la famille
+        List<ArbreGenealogique> arbres = arbreGenealogiqueRepository.findByFamilleId(familleId);
+        ArbreGenealogique arbre = arbres.isEmpty() ? null : arbres.get(0);
+
+        if (arbre == null) {
+            // Créer automatiquement l'arbre s'il n'existe pas
+            arbre = new ArbreGenealogique();
+            arbre.setFamille(famille);
+            arbre.setNom("Arbre généalogique de " + famille.getNom());
+            arbre.setDescription("Arbre généalogique de la famille " + famille.getNom());
+
+            Utilisateur createur = famille.getMembres().stream()
+                    .filter(m -> m.getRoleFamille() == RoleFamille.ADMIN)
+                    .map(MembreFamille::getUtilisateur)
+                    .findFirst()
+                    .orElse(famille.getMembres().get(0).getUtilisateur());
+            arbre.setCreateur(createur);
+
+            arbre = arbreGenealogiqueRepository.save(arbre);
+        }
+
+        // Récupérer tous les membres de l'arbre
+        List<MembreArbre> tousMembres = membreArbreRepository.findByArbreId(arbre.getId());
+        
+        if (tousMembres.isEmpty()) {
+            return ArbreGenealogiqueHierarchiqueDTO.builder()
+                    .id(arbre.getId())
+                    .nom(arbre.getNom())
+                    .description(arbre.getDescription())
+                    .dateCreation(arbre.getDateCreation())
+                    .dateModification(arbre.getDateModification())
+                    .idFamille(famille.getId())
+                    .nomFamille(famille.getNom())
+                    .idCreateur(arbre.getCreateur() != null ? arbre.getCreateur().getId() : null)
+                    .nomCreateur(arbre.getCreateur() != null ? 
+                            arbre.getCreateur().getNom() + " " + arbre.getCreateur().getPrenom() : null)
+                    .racines(new ArrayList<>())
+                    .nombreMembres(0)
+                    .nombreGenerations(0)
+                    .build();
+        }
+
+        // Créer une map pour accès rapide aux membres par ID
+        Map<Long, MembreArbre> membresMap = tousMembres.stream()
+                .collect(Collectors.toMap(MembreArbre::getId, m -> m));
+
+        // Identifier les racines (membres sans parents)
+        List<MembreArbre> racines = tousMembres.stream()
+                .filter(m -> m.getPere() == null && m.getMere() == null)
+                .collect(Collectors.toList());
+
+        // Si aucune racine n'est trouvée, prendre le membre le plus ancien comme racine
+        if (racines.isEmpty()) {
+            racines = tousMembres.stream()
+                    .sorted((m1, m2) -> {
+                        if (m1.getDateNaissance() != null && m2.getDateNaissance() != null) {
+                            return m1.getDateNaissance().compareTo(m2.getDateNaissance());
+                        }
+                        return 0;
+                    })
+                    .limit(1)
+                    .collect(Collectors.toList());
+        }
+
+        // Construire la structure hiérarchique récursive
+        List<NoeudArbreDTO> racinesDTO = new ArrayList<>();
+        int maxNiveau = 0;
+        
+        for (MembreArbre racine : racines) {
+            NoeudArbreDTO noeud = construireNoeudRecursif(racine, membresMap, 0, 0.0, 0.0);
+            racinesDTO.add(noeud);
+            maxNiveau = Math.max(maxNiveau, calculerNiveauMax(noeud));
+        }
+
+        // Calculer les positions pour le layout
+        calculerPositions(racinesDTO, 0, 0.0);
+
+        return ArbreGenealogiqueHierarchiqueDTO.builder()
+                .id(arbre.getId())
+                .nom(arbre.getNom())
+                .description(arbre.getDescription())
+                .dateCreation(arbre.getDateCreation())
+                .dateModification(arbre.getDateModification())
+                .idFamille(famille.getId())
+                .nomFamille(famille.getNom())
+                .idCreateur(arbre.getCreateur() != null ? arbre.getCreateur().getId() : null)
+                .nomCreateur(arbre.getCreateur() != null ? 
+                        arbre.getCreateur().getNom() + " " + arbre.getCreateur().getPrenom() : null)
+                .racines(racinesDTO)
+                .nombreMembres(tousMembres.size())
+                .nombreGenerations(maxNiveau + 1)
+                .idMembreRacinePrincipal(racines.isEmpty() ? null : racines.get(0).getId())
+                .build();
+    }
+
+    /**
+     * Construit récursivement un nœud de l'arbre avec ses enfants.
+     */
+    private NoeudArbreDTO construireNoeudRecursif(MembreArbre membre, 
+                                                   Map<Long, MembreArbre> membresMap, 
+                                                   int niveau, 
+                                                   double posX, 
+                                                   double posY) {
+        // Récupérer tous les enfants de ce membre
+        List<MembreArbre> enfants = membreArbreRepository.findByPereIdOrMereId(membre.getId(), membre.getId());
+        
+        // Construire les nœuds enfants
+        List<NoeudArbreDTO> enfantsDTO = new ArrayList<>();
+        double enfantPosX = posX;
+        
+        for (MembreArbre enfant : enfants) {
+            NoeudArbreDTO enfantNoeud = construireNoeudRecursif(enfant, membresMap, niveau + 1, enfantPosX, posY + 1.0);
+            enfantsDTO.add(enfantNoeud);
+            enfantPosX += 1.0; // Espacement horizontal entre enfants
+        }
+
+        return NoeudArbreDTO.builder()
+                .id(membre.getId())
+                .nom(membre.getNom())
+                .prenom(membre.getPrenom())
+                .nomComplet(membre.getNomComplet())
+                .sexe(membre.getSexe())
+                .dateNaissance(membre.getDateNaissance())
+                .dateDeces(membre.getDateDeces())
+                .lieuNaissance(membre.getLieuNaissance())
+                .lieuDeces(membre.getLieuDeces())
+                .biographie(membre.getBiographie())
+                .photoUrl(membre.getPhotoUrl())
+                .relationFamiliale(membre.getRelationFamiliale())
+                .idPere(membre.getPere() != null ? membre.getPere().getId() : null)
+                .idMere(membre.getMere() != null ? membre.getMere().getId() : null)
+                .enfants(enfantsDTO)
+                .nombreEnfants(enfantsDTO.size())
+                .niveau(niveau)
+                .positionX(posX)
+                .positionY(posY)
+                .build();
+    }
+
+    /**
+     * Calcule le niveau maximum dans l'arbre.
+     */
+    private int calculerNiveauMax(NoeudArbreDTO noeud) {
+        if (noeud.getEnfants() == null || noeud.getEnfants().isEmpty()) {
+            return noeud.getNiveau();
+        }
+        
+        int maxNiveau = noeud.getNiveau();
+        for (NoeudArbreDTO enfant : noeud.getEnfants()) {
+            maxNiveau = Math.max(maxNiveau, calculerNiveauMax(enfant));
+        }
+        return maxNiveau;
+    }
+
+    /**
+     * Calcule les positions X et Y pour chaque nœud pour un meilleur layout.
+     */
+    private void calculerPositions(List<NoeudArbreDTO> noeuds, int niveau, double startX) {
+        double currentX = startX;
+        
+        for (NoeudArbreDTO noeud : noeuds) {
+            noeud.setPositionX(currentX);
+            noeud.setPositionY(niveau);
+            
+            if (noeud.getEnfants() != null && !noeud.getEnfants().isEmpty()) {
+                // Calculer la largeur totale des enfants
+                double largeurEnfants = calculerLargeur(noeud.getEnfants());
+                double startXEnfants = currentX - (largeurEnfants / 2.0) + 0.5;
+                
+                calculerPositions(noeud.getEnfants(), niveau + 1, startXEnfants);
+            }
+            
+            currentX += 1.0;
+        }
+    }
+
+    /**
+     * Calcule la largeur totale d'une liste de nœuds.
+     */
+    private double calculerLargeur(List<NoeudArbreDTO> noeuds) {
+        if (noeuds == null || noeuds.isEmpty()) {
+            return 1.0;
+        }
+        
+        double largeur = 0.0;
+        for (NoeudArbreDTO noeud : noeuds) {
+            if (noeud.getEnfants() != null && !noeud.getEnfants().isEmpty()) {
+                largeur += calculerLargeur(noeud.getEnfants());
+            } else {
+                largeur += 1.0;
+            }
+        }
+        return Math.max(largeur, noeuds.size());
     }
 
     /**

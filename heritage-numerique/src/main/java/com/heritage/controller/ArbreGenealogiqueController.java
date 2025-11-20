@@ -2,6 +2,7 @@ package com.heritage.controller;
 
 import com.heritage.dto.AjoutMembreArbreRequest;
 import com.heritage.dto.ArbreGenealogiqueDTO;
+import com.heritage.dto.ArbreGenealogiqueHierarchiqueDTO;
 import com.heritage.dto.MembreArbreDTO;
 import com.heritage.service.ArbreGenealogiqueService;
 import com.heritage.util.AuthenticationHelper;
@@ -41,6 +42,25 @@ public class ArbreGenealogiqueController {
             Authentication authentication) {
         
         ArbreGenealogiqueDTO arbre = arbreGenealogiqueService.getArbreByFamille(familleId);
+        return ResponseEntity.ok(arbre);
+    }
+
+    /**
+     * Récupère l'arbre généalogique d'une famille sous forme hiérarchique.
+     * Structure optimisée pour l'affichage dans Flutter (style MyHeritage).
+     * 
+     * Endpoint : GET /api/arbre-genealogique/famille/{familleId}/hierarchique
+     * 
+     * @param familleId ID de la famille
+     * @param authentication Authentification de l'utilisateur
+     * @return Arbre généalogique hiérarchique
+     */
+    @GetMapping("/famille/{familleId}/hierarchique")
+    public ResponseEntity<ArbreGenealogiqueHierarchiqueDTO> getArbreHierarchiqueByFamille(
+            @PathVariable Long familleId,
+            Authentication authentication) {
+        
+        ArbreGenealogiqueHierarchiqueDTO arbre = arbreGenealogiqueService.getArbreHierarchiqueByFamille(familleId);
         return ResponseEntity.ok(arbre);
     }
 
