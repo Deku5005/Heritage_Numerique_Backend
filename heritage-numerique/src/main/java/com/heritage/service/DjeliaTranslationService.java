@@ -84,7 +84,7 @@ public class DjeliaTranslationService {
                         return clientResponse.createException();
                     })
                     .bodyToMono(Map.class)
-                    .block(Duration.ofSeconds(15)); // Timeout augmenté à 15 secondes pour les traductions longues
+                    .block(Duration.ofSeconds(3)); // Timeout augmenté à 15 secondes pour les traductions longues
 
             // Vérification de la réponse - Djelia peut utiliser différents noms de champs
             if (response != null) {
