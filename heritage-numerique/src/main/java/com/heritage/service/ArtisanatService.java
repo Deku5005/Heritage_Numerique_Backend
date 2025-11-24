@@ -9,7 +9,7 @@ import com.heritage.repository.MembreFamilleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -99,26 +99,21 @@ public class ArtisanatService {
         
         if (membreAuteur != null) {
             roleAuteur = membreAuteur.getRoleFamille().toString();
-            // Note: Le champ lienParente n'existe pas dans l'entité MembreFamille
-            lienParenteAuteur = "Non spécifié";
+            lienParenteAuteur = membreAuteur.getLienParente() != null ? 
+                    membreAuteur.getLienParente() : "Non spécifié";
         }
 
-        // Extraire les URLs des photos de la description
-        List<String> urlPhotos = Arrays.asList();
+        // Récupérer les photos et vidéos
+        List<String> urlPhotos = new ArrayList<>();
         String urlVideo = null;
         
-        if (artisanat.getDescription() != null && artisanat.getDescription().contains("Photos:")) {
-            String photosPart = artisanat.getDescription().substring(artisanat.getDescription().indexOf("Photos:") + 7);
-            if (photosPart.contains("\n")) {
-                photosPart = photosPart.substring(0, photosPart.indexOf("\n"));
-            }
-            urlPhotos = Arrays.stream(photosPart.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .collect(Collectors.toList());
+        // La photo est stockée dans le champ urlPhoto
+        if (artisanat.getUrlPhoto() != null && !artisanat.getUrlPhoto().isEmpty()) {
+            urlPhotos.add(artisanat.getUrlPhoto());
         }
         
-        if (artisanat.getUrlFichier() != null && !artisanat.getUrlFichier().startsWith("photos/")) {
+        // La vidéo est stockée dans le champ urlFichier
+        if (artisanat.getUrlFichier() != null && !artisanat.getUrlFichier().isEmpty()) {
             urlVideo = artisanat.getUrlFichier();
         }
 
