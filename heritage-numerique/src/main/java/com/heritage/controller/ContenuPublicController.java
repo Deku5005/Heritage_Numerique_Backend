@@ -36,8 +36,11 @@ import java.util.Set;
  * - GET /api/public/traduction/contes/{conteId} : Traduit un conte public dans toutes les langues
  * - GET /api/public/traduction/contes/{conteId}/{lang} : Traduit un conte public dans une langue spécifique (fr, en, bm)
  * - GET /api/public/traduction/artisanats/{artisanatId} : Traduit un artisanat public dans toutes les langues
+ * - GET /api/public/traduction/artisanats/{artisanatId}/{lang} : Traduit un artisanat public dans une langue spécifique (fr, en, bm)
  * - GET /api/public/traduction/proverbes/{proverbeId} : Traduit un proverbe public dans toutes les langues
+ * - GET /api/public/traduction/proverbes/{proverbeId}/{lang} : Traduit un proverbe public dans une langue spécifique (fr, en, bm)
  * - GET /api/public/traduction/devinettes/{devinetteId} : Traduit une devinette publique dans toutes les langues
+ * - GET /api/public/traduction/devinettes/{devinetteId}/{lang} : Traduit une devinette publique dans une langue spécifique (fr, en, bm)
  * 
  * Sécurité :
  * - Tous les endpoints sont accessibles sans authentification
@@ -257,6 +260,19 @@ public class ContenuPublicController {
         summary = "Traduire un artisanat public dans toutes les langues",
         description = "Traduit un artisanat public (statut PUBLIE) en français, bambara et anglais via l'API Djelia. Accessible sans authentification."
     )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Artisanat non trouvé"),
+        @ApiResponse(responseCode = "403", description = "L'artisanat n'est pas public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
     @GetMapping("/traduction/artisanats/{artisanatId}")
     public ResponseEntity<TraductionConteDTO> traduireArtisanatPublic(
             @Parameter(description = "ID de l'artisanat public à traduire", required = true, example = "1")
@@ -264,6 +280,51 @@ public class ContenuPublicController {
         try {
             TraductionConteDTO traduction = contenuPublicService.traduireArtisanatPublic(artisanatId);
             return ResponseEntity.ok(traduction);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("non trouvé")) {
+                return ResponseEntity.notFound().build();
+            } else if (e.getMessage().contains("n'est pas public")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Traduit un artisanat public dans une langue spécifique.
+     * 
+     * URL : GET /api/public/traduction/artisanats/{artisanatId}/{lang}
+     * 
+     * @param artisanatId ID de l'artisanat public à traduire
+     * @param lang Langue cible (fr, en, bm)
+     * @return DTO avec la traduction dans la langue spécifiée
+     */
+    @Operation(
+        summary = "Traduire un artisanat public dans une langue spécifique",
+        description = "Traduit un artisanat public (statut PUBLIE) dans la langue spécifiée (fr, en, bm). Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Artisanat non trouvé"),
+        @ApiResponse(responseCode = "403", description = "L'artisanat n'est pas public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
+    @GetMapping("/traduction/artisanats/{artisanatId}/{lang}")
+    public ResponseEntity<TraductionConteDTO> traduireArtisanatPublicParLangue(
+            @Parameter(description = "ID de l'artisanat public à traduire", required = true, example = "1")
+            @PathVariable Long artisanatId,
+            @Parameter(description = "Langue cible (fr, en, bm)", required = true, example = "fr")
+            @PathVariable String lang) {
+        try {
+            TraductionConteDTO traduction = contenuPublicService.traduireArtisanatPublic(artisanatId);
+            return ResponseEntity.ok(filterTranslationByLanguage(traduction, lang));
         } catch (RuntimeException e) {
             if (e.getMessage().contains("non trouvé")) {
                 return ResponseEntity.notFound().build();
@@ -286,6 +347,19 @@ public class ContenuPublicController {
         summary = "Traduire un proverbe public dans toutes les langues",
         description = "Traduit un proverbe public (statut PUBLIE) en français, bambara et anglais via l'API Djelia. Accessible sans authentification."
     )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Proverbe non trouvé"),
+        @ApiResponse(responseCode = "403", description = "Le proverbe n'est pas public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
     @GetMapping("/traduction/proverbes/{proverbeId}")
     public ResponseEntity<TraductionConteDTO> traduireProverbePublic(
             @Parameter(description = "ID du proverbe public à traduire", required = true, example = "1")
@@ -293,6 +367,51 @@ public class ContenuPublicController {
         try {
             TraductionConteDTO traduction = contenuPublicService.traduireProverbePublic(proverbeId);
             return ResponseEntity.ok(traduction);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("non trouvé")) {
+                return ResponseEntity.notFound().build();
+            } else if (e.getMessage().contains("n'est pas public")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Traduit un proverbe public dans une langue spécifique.
+     * 
+     * URL : GET /api/public/traduction/proverbes/{proverbeId}/{lang}
+     * 
+     * @param proverbeId ID du proverbe public à traduire
+     * @param lang Langue cible (fr, en, bm)
+     * @return DTO avec la traduction dans la langue spécifiée
+     */
+    @Operation(
+        summary = "Traduire un proverbe public dans une langue spécifique",
+        description = "Traduit un proverbe public (statut PUBLIE) dans la langue spécifiée (fr, en, bm). Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Proverbe non trouvé"),
+        @ApiResponse(responseCode = "403", description = "Le proverbe n'est pas public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
+    @GetMapping("/traduction/proverbes/{proverbeId}/{lang}")
+    public ResponseEntity<TraductionConteDTO> traduireProverbePublicParLangue(
+            @Parameter(description = "ID du proverbe public à traduire", required = true, example = "1")
+            @PathVariable Long proverbeId,
+            @Parameter(description = "Langue cible (fr, en, bm)", required = true, example = "fr")
+            @PathVariable String lang) {
+        try {
+            TraductionConteDTO traduction = contenuPublicService.traduireProverbePublic(proverbeId);
+            return ResponseEntity.ok(filterTranslationByLanguage(traduction, lang));
         } catch (RuntimeException e) {
             if (e.getMessage().contains("non trouvé")) {
                 return ResponseEntity.notFound().build();
@@ -315,6 +434,19 @@ public class ContenuPublicController {
         summary = "Traduire une devinette publique dans toutes les langues",
         description = "Traduit une devinette publique (statut PUBLIE) en français, bambara et anglais via l'API Djelia. Accessible sans authentification."
     )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Devinette non trouvée"),
+        @ApiResponse(responseCode = "403", description = "La devinette n'est pas publique"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
     @GetMapping("/traduction/devinettes/{devinetteId}")
     public ResponseEntity<TraductionConteDTO> traduireDevinettePublic(
             @Parameter(description = "ID de la devinette publique à traduire", required = true, example = "1")
@@ -322,6 +454,51 @@ public class ContenuPublicController {
         try {
             TraductionConteDTO traduction = contenuPublicService.traduireDevinettePublic(devinetteId);
             return ResponseEntity.ok(traduction);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("non trouvé")) {
+                return ResponseEntity.notFound().build();
+            } else if (e.getMessage().contains("n'est pas public")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Traduit une devinette publique dans une langue spécifique.
+     * 
+     * URL : GET /api/public/traduction/devinettes/{devinetteId}/{lang}
+     * 
+     * @param devinetteId ID de la devinette publique à traduire
+     * @param lang Langue cible (fr, en, bm)
+     * @return DTO avec la traduction dans la langue spécifiée
+     */
+    @Operation(
+        summary = "Traduire une devinette publique dans une langue spécifique",
+        description = "Traduit une devinette publique (statut PUBLIE) dans la langue spécifiée (fr, en, bm). Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Traduction réussie",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = TraductionConteDTO.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Devinette non trouvée"),
+        @ApiResponse(responseCode = "403", description = "La devinette n'est pas publique"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la traduction")
+    })
+    @GetMapping("/traduction/devinettes/{devinetteId}/{lang}")
+    public ResponseEntity<TraductionConteDTO> traduireDevinettePublicParLangue(
+            @Parameter(description = "ID de la devinette publique à traduire", required = true, example = "1")
+            @PathVariable Long devinetteId,
+            @Parameter(description = "Langue cible (fr, en, bm)", required = true, example = "fr")
+            @PathVariable String lang) {
+        try {
+            TraductionConteDTO traduction = contenuPublicService.traduireDevinettePublic(devinetteId);
+            return ResponseEntity.ok(filterTranslationByLanguage(traduction, lang));
         } catch (RuntimeException e) {
             if (e.getMessage().contains("non trouvé")) {
                 return ResponseEntity.notFound().build();
