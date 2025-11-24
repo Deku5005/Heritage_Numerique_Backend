@@ -6,6 +6,7 @@ import com.heritage.dto.DevinetteDTO;
 import com.heritage.dto.ProverbeDTO;
 import com.heritage.dto.TraductionConteDTO;
 import com.heritage.service.ContenuPublicService;
+import com.heritage.service.LectureVocaleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,7 +14,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,9 +51,12 @@ import java.util.Set;
 public class ContenuPublicController {
 
     private final ContenuPublicService contenuPublicService;
+    private final LectureVocaleService lectureVocaleService;
 
-    public ContenuPublicController(ContenuPublicService contenuPublicService) {
+    public ContenuPublicController(ContenuPublicService contenuPublicService,
+                                   LectureVocaleService lectureVocaleService) {
         this.contenuPublicService = contenuPublicService;
+        this.lectureVocaleService = lectureVocaleService;
     }
 
     /**
@@ -372,6 +378,185 @@ public class ContenuPublicController {
                 return "eng_Latn";
             default:
                 return langCode;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // --- Endpoints de Lecture Vocale pour Contenus Publics ---
+    // -------------------------------------------------------------------------
+
+    /**
+     * Génère l'audio pour un contenu public (langue par défaut: français).
+     * 
+     * URL : GET /api/public/lecture-vocale/contenu/{contenuId}
+     * 
+     * @param contenuId ID du contenu public
+     * @return Fichier audio (MP3 ou WAV)
+     */
+    @Operation(
+        summary = "Générer l'audio pour un contenu public",
+        description = "Génère un fichier audio pour la lecture vocale d'un contenu public. Inclut le titre, la description, le contenu textuel et le contenu extrait du fichier. Langue par défaut: français. Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Audio généré avec succès",
+            content = @Content(
+                mediaType = "audio/mpeg",
+                schema = @Schema(type = "string", format = "binary")
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Contenu non trouvé ou non public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la génération audio")
+    })
+    @GetMapping("/lecture-vocale/contenu/{contenuId}")
+    public ResponseEntity<byte[]> genererAudioPublic(
+            @Parameter(description = "ID du contenu public", required = true, example = "1")
+            @PathVariable Long contenuId) {
+        
+        try {
+            // Vérifier que le contenu existe et est public
+            if (!lectureVocaleService.contenuEstPublic(contenuId)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Générer l'audio en français par défaut
+            byte[] audioBytes = lectureVocaleService.genererAudio(contenuId, "fr");
+
+            if (audioBytes == null || audioBytes.length == 0) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Erreur lors de la génération audio".getBytes());
+            }
+
+            // Définir les headers pour le téléchargement/lecture audio
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("audio/mpeg"));
+            headers.setContentLength(audioBytes.length);
+            headers.setContentDispositionFormData("attachment", "lecture_public_" + contenuId + ".mp3");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(audioBytes);
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la génération audio: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Génère l'audio pour un contenu public dans une langue spécifique.
+     * 
+     * URL : GET /api/public/lecture-vocale/contenu/{contenuId}/{lang}
+     * 
+     * @param contenuId ID du contenu public
+     * @param lang Langue pour la lecture (fr, en, bm)
+     * @return Fichier audio (MP3 ou WAV)
+     */
+    @Operation(
+        summary = "Générer l'audio pour un contenu public dans une langue spécifique",
+        description = "Génère un fichier audio pour la lecture vocale d'un contenu public dans la langue spécifiée (fr, en, bm). Inclut le titre, la description, le contenu textuel et le contenu extrait du fichier. Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Audio généré avec succès",
+            content = @Content(
+                mediaType = "audio/mpeg",
+                schema = @Schema(type = "string", format = "binary")
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Contenu non trouvé ou non public"),
+        @ApiResponse(responseCode = "500", description = "Erreur lors de la génération audio")
+    })
+    @GetMapping("/lecture-vocale/contenu/{contenuId}/{lang}")
+    public ResponseEntity<byte[]> genererAudioPublicParLangue(
+            @Parameter(description = "ID du contenu public", required = true, example = "1")
+            @PathVariable Long contenuId,
+            @Parameter(description = "Langue pour la lecture (fr, en, bm)", required = true, example = "fr")
+            @PathVariable String lang) {
+        
+        try {
+            // Vérifier que le contenu existe et est public
+            if (!lectureVocaleService.contenuEstPublic(contenuId)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Générer l'audio dans la langue spécifiée
+            byte[] audioBytes = lectureVocaleService.genererAudio(contenuId, lang);
+
+            if (audioBytes == null || audioBytes.length == 0) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Erreur lors de la génération audio".getBytes());
+            }
+
+            // Définir les headers pour le téléchargement/lecture audio
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("audio/mpeg"));
+            headers.setContentLength(audioBytes.length);
+            headers.setContentDispositionFormData("attachment", "lecture_public_" + contenuId + "_" + lang + ".mp3");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(audioBytes);
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la génération audio: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Récupère le texte complet pour la lecture vocale d'un contenu public.
+     * 
+     * URL : GET /api/public/lecture-vocale/contenu/{contenuId}/texte
+     * 
+     * @param contenuId ID du contenu public
+     * @return Texte complet pour la lecture vocale
+     */
+    @Operation(
+        summary = "Récupérer le texte complet pour la lecture vocale d'un contenu public",
+        description = "Récupère le texte complet d'un contenu public qui sera utilisé pour la lecture vocale. Inclut le titre, la description, le contenu textuel et le contenu extrait du fichier. Accessible sans authentification."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Texte récupéré avec succès",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = java.util.Map.class)
+            )
+        ),
+        @ApiResponse(responseCode = "404", description = "Contenu non trouvé ou non public")
+    })
+    @GetMapping("/lecture-vocale/contenu/{contenuId}/texte")
+    public ResponseEntity<java.util.Map<String, String>> getTextePourLecturePublic(
+            @Parameter(description = "ID du contenu public", required = true, example = "1")
+            @PathVariable Long contenuId) {
+        
+        try {
+            // Vérifier que le contenu existe et est public
+            if (!lectureVocaleService.contenuEstPublic(contenuId)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Récupérer le texte complet (original, non traduit)
+            String texte = lectureVocaleService.getTexteCompletPourLecture(contenuId);
+
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("contenuId", contenuId.toString());
+            response.put("texte", texte);
+            response.put("longueur", String.valueOf(texte.length()));
+            response.put("langue", "fr"); // Langue source par défaut
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la récupération du texte: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

@@ -86,6 +86,9 @@ public class SecurityConfig {
                         // Endpoints publics (Contenus) - Inclus du premier fichier
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/contenus/public/**").permitAll()
+                        
+                        // Endpoints de lecture vocale publics (sous /api/public/lecture-vocale)
+                        // Note: Les endpoints familiaux (/api/lecture-vocale) nécessitent une authentification
                         .requestMatchers("/api/superadmin/contenus-publics/contes").permitAll()
                         .requestMatchers("/api/superadmin/contenus-publics/artisanats").permitAll()
                         .requestMatchers("/api/superadmin/contenus-publics/proverbes").permitAll()

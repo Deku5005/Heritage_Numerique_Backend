@@ -2,10 +2,13 @@ package com.heritage.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
 
+import javax.net.ssl.SSLException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,9 +32,26 @@ public class DjeliaTranslationService {
     private String apiKey;
 
     public DjeliaTranslationService(WebClient.Builder webClientBuilder) {
+        // Configuration du WebClient avec support SSL (ignorer la validation pour contourner les certificats expirés)
+        // ATTENTION: Ceci est temporaire et devrait être retiré une fois que Djelia renouvelle son certificat SSL
+        HttpClient httpClient = HttpClient.create()
+                .secure(sslContextSpec -> {
+                    try {
+                        sslContextSpec.sslContext(
+                                io.netty.handler.ssl.SslContextBuilder
+                                        .forClient()
+                                        .trustManager(io.netty.handler.ssl.util.InsecureTrustManagerFactory.INSTANCE)
+                                        .build()
+                        );
+                    } catch (SSLException e) {
+                        System.err.println("⚠️ Erreur lors de la configuration SSL: " + e.getMessage());
+                    }
+                });
+
         // La Base URL est le préfixe de l'API : https://djelia.cloud/api/v1
         this.webClient = webClientBuilder
                 .baseUrl("https://djelia.cloud/api/v1") // Base URL pour l'API version 1
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
 
