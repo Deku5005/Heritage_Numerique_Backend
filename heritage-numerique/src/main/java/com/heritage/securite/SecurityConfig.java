@@ -97,6 +97,8 @@ public class SecurityConfig {
                         // Accès aux fichiers statiques (images, PDF)
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        // Dans votre configuration de sécurité
+                        .requestMatchers("/api/lecture-vocale/contenu/**").permitAll()
 
                         // Autoriser toutes les requêtes OPTIONS (preflight CORS) - Inclus du deuxième fichier
                         .requestMatchers(OPTIONS, "/**").permitAll()
