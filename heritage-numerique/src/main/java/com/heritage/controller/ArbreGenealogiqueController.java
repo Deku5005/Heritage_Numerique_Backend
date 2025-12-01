@@ -29,10 +29,8 @@ public class ArbreGenealogiqueController {
 
     /**
      * Récupère l'arbre généalogique d'une famille avec tous ses membres.
-     * 
-     * Endpoint : GET /api/arbre-genealogique/famille/{familleId}
-     * 
-     * @param familleId ID de la famille
+     * * Endpoint : GET /api/arbre-genealogique/famille/{familleId}
+     * * @param familleId ID de la famille
      * @param authentication Authentification de l'utilisateur
      * @return Arbre généalogique complet
      */
@@ -40,7 +38,7 @@ public class ArbreGenealogiqueController {
     public ResponseEntity<ArbreGenealogiqueDTO> getArbreByFamille(
             @PathVariable Long familleId,
             Authentication authentication) {
-        
+
         ArbreGenealogiqueDTO arbre = arbreGenealogiqueService.getArbreByFamille(familleId);
         return ResponseEntity.ok(arbre);
     }
@@ -48,10 +46,8 @@ public class ArbreGenealogiqueController {
     /**
      * Récupère l'arbre généalogique d'une famille sous forme hiérarchique.
      * Structure optimisée pour l'affichage dans Flutter (style MyHeritage).
-     * 
-     * Endpoint : GET /api/arbre-genealogique/famille/{familleId}/hierarchique
-     * 
-     * @param familleId ID de la famille
+     * * Endpoint : GET /api/arbre-genealogique/famille/{familleId}/hierarchique
+     * * @param familleId ID de la famille
      * @param authentication Authentification de l'utilisateur
      * @return Arbre généalogique hiérarchique
      */
@@ -59,17 +55,15 @@ public class ArbreGenealogiqueController {
     public ResponseEntity<ArbreGenealogiqueHierarchiqueDTO> getArbreHierarchiqueByFamille(
             @PathVariable Long familleId,
             Authentication authentication) {
-        
+
         ArbreGenealogiqueHierarchiqueDTO arbre = arbreGenealogiqueService.getArbreHierarchiqueByFamille(familleId);
         return ResponseEntity.ok(arbre);
     }
 
     /**
      * Ajoute un membre à l'arbre généalogique d'une famille.
-     * 
-     * Endpoint : POST /api/arbre-genealogique/ajouter-membre
-     * 
-     * @param nomComplet Nom complet du membre
+     * * Endpoint : POST /api/arbre-genealogique/ajouter-membre
+     * * @param nomComplet Nom complet du membre
      * @param dateNaissance Date de naissance
      * @param lieuNaissance Lieu de naissance
      * @param relationFamiliale Relation familiale
@@ -77,8 +71,8 @@ public class ArbreGenealogiqueController {
      * @param telephone Numéro de téléphone
      * @param email Adresse email
      * @param biographie Biographie du membre
-     * @param parent1Id ID du premier parent
-     * @param parent2Id ID du deuxième parent
+     * @param parent1Id ID du premier parent (Reçu comme String du multipart)
+     * @param parent2Id ID du deuxième parent (Reçu comme String du multipart)
      * @param idFamille ID de la famille
      * @param authentication Authentification de l'utilisateur
      * @return DTO du membre ajouté
@@ -93,27 +87,30 @@ public class ArbreGenealogiqueController {
             @RequestParam(required = false) String telephone,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String biographie,
-            @RequestParam(required = false) Long parent1Id,
-            @RequestParam(required = false) Long parent2Id,
+            // 🔴 CHANGEMENT CLÉ : Assure que le nom du champ "Parent1Id" envoyé par Flutter est mappé au paramètre Java
+            @RequestParam(name = "Parent1Id", required = false) String parent1Id,
+            // 🔴 CHANGEMENT CLÉ : Assure que le nom du champ "Parent2Id" envoyé par Flutter est mappé au paramètre Java
+            @RequestParam(name = "Parent2Id", required = false) String parent2Id,
             @RequestParam Long idFamille,
             Authentication authentication) {
-        
+
         try {
             // Créer la requête à partir des paramètres
             AjoutMembreArbreRequest request = AjoutMembreArbreRequest.builder()
                     .nomComplet(nomComplet)
-                    .dateNaissance(dateNaissance) // Passer la chaîne directement
+                    .dateNaissance(dateNaissance)
                     .lieuNaissance(lieuNaissance)
                     .relationFamiliale(relationFamiliale)
                     .photo(photo)
                     .telephone(telephone)
                     .email(email)
                     .biographie(biographie)
+                    // Passer les String directement au DTO mis à jour
                     .parent1Id(parent1Id)
                     .parent2Id(parent2Id)
                     .idFamille(idFamille)
                     .build();
-            
+
             Long auteurId = AuthenticationHelper.getCurrentUserId();
             MembreArbreDTO membre = arbreGenealogiqueService.ajouterMembreArbre(request, auteurId);
             return ResponseEntity.ok(membre);
@@ -125,10 +122,8 @@ public class ArbreGenealogiqueController {
 
     /**
      * Récupère un membre spécifique de l'arbre généalogique.
-     * 
-     * Endpoint : GET /api/arbre-genealogique/membre/{membreId}
-     * 
-     * @param membreId ID du membre
+     * * Endpoint : GET /api/arbre-genealogique/membre/{membreId}
+     * * @param membreId ID du membre
      * @param authentication Authentification de l'utilisateur
      * @return DTO du membre
      */
@@ -136,7 +131,7 @@ public class ArbreGenealogiqueController {
     public ResponseEntity<MembreArbreDTO> getMembreArbreById(
             @PathVariable Long membreId,
             Authentication authentication) {
-        
+
         MembreArbreDTO membre = arbreGenealogiqueService.getMembreArbreById(membreId);
         return ResponseEntity.ok(membre);
     }
@@ -147,10 +142,8 @@ public class ArbreGenealogiqueController {
      * - Descendants (enfants, petits-enfants, etc.)
      * - Ascendants (parents, grands-parents, etc.)
      * - Frères et sœurs
-     * 
-     * Endpoint : GET /api/arbre-genealogique/membre/{membreId}/membres-lies
-     * 
-     * @param membreId ID du membre de référence
+     * * Endpoint : GET /api/arbre-genealogique/membre/{membreId}/membres-lies
+     * * @param membreId ID du membre de référence
      * @param authentication Authentification de l'utilisateur
      * @return Liste de tous les membres liés
      */
@@ -158,32 +151,31 @@ public class ArbreGenealogiqueController {
     public ResponseEntity<List<MembreArbreDTO>> getTousMembresLies(
             @PathVariable Long membreId,
             Authentication authentication) {
-        
+
         List<MembreArbreDTO> membresLies = arbreGenealogiqueService.getTousMembresLies(membreId);
         return ResponseEntity.ok(membresLies);
     }
 
     /**
      * Endpoint de test pour vérifier les permissions.
-     * 
-     * Endpoint : GET /api/arbre-genealogique/test-permissions/{familleId}
+     * * Endpoint : GET /api/arbre-genealogique/test-permissions/{familleId}
      */
     @GetMapping("/test-permissions/{familleId}")
     public ResponseEntity<String> testPermissions(
             @PathVariable Long familleId,
             Authentication authentication) {
-        
+
         try {
             Long auteurId = AuthenticationHelper.getCurrentUserId();
-            
+
             // Vérifier si l'utilisateur est membre de la famille
             var membreFamille = arbreGenealogiqueService.getMembreFamille(auteurId, familleId);
             if (membreFamille == null) {
                 return ResponseEntity.ok("User ID: " + auteurId + ", Famille ID: " + familleId + " - NOT MEMBER");
             }
-            
-            return ResponseEntity.ok("User ID: " + auteurId + ", Famille ID: " + familleId + 
-                    ", Role: " + membreFamille.getRoleFamille() + 
+
+            return ResponseEntity.ok("User ID: " + auteurId + ", Famille ID: " + familleId +
+                    ", Role: " + membreFamille.getRoleFamille() +
                     ", Can Write: " + membreFamille.getRoleFamille().canWrite());
         } catch (Exception e) {
             return ResponseEntity.ok("Error: " + e.getMessage());
@@ -192,8 +184,7 @@ public class ArbreGenealogiqueController {
 
     /**
      * Endpoint de test pour créer un membre simple.
-     * 
-     * Endpoint : POST /api/arbre-genealogique/test-ajouter
+     * * Endpoint : POST /api/arbre-genealogique/test-ajouter
      */
     @PostMapping("/test-ajouter")
     public ResponseEntity<String> testAjouterMembre(
@@ -203,10 +194,10 @@ public class ArbreGenealogiqueController {
             @RequestParam String relationFamiliale,
             @RequestParam Long idFamille,
             Authentication authentication) {
-        
+
         try {
             Long auteurId = AuthenticationHelper.getCurrentUserId();
-            
+
             // Créer la requête à partir des paramètres
             AjoutMembreArbreRequest request = AjoutMembreArbreRequest.builder()
                     .nomComplet(nomComplet)
@@ -217,11 +208,12 @@ public class ArbreGenealogiqueController {
                     .telephone(null)
                     .email(null)
                     .biographie(null)
+                    // Note: Le test utilise null, ce qui est OK si le DTO accepte String
                     .parent1Id(null)
                     .parent2Id(null)
                     .idFamille(idFamille)
                     .build();
-            
+
             MembreArbreDTO membre = arbreGenealogiqueService.ajouterMembreArbre(request, auteurId);
             return ResponseEntity.ok("Success: Member created with ID " + membre.getId());
         } catch (Exception e) {

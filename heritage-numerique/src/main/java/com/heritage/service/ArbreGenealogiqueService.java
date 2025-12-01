@@ -106,7 +106,7 @@ public class ArbreGenealogiqueService {
     /**
      * Récupère l'arbre généalogique d'une famille sous forme hiérarchique.
      * Structure optimisée pour l'affichage dans Flutter (style MyHeritage).
-     * 
+     *
      * @param familleId ID de la famille
      * @return Arbre généalogique hiérarchique
      */
@@ -139,7 +139,7 @@ public class ArbreGenealogiqueService {
 
         // Récupérer tous les membres de l'arbre
         List<MembreArbre> tousMembres = membreArbreRepository.findByArbreId(arbre.getId());
-        
+
         if (tousMembres.isEmpty()) {
             return ArbreGenealogiqueHierarchiqueDTO.builder()
                     .id(arbre.getId())
@@ -150,7 +150,7 @@ public class ArbreGenealogiqueService {
                     .idFamille(famille.getId())
                     .nomFamille(famille.getNom())
                     .idCreateur(arbre.getCreateur() != null ? arbre.getCreateur().getId() : null)
-                    .nomCreateur(arbre.getCreateur() != null ? 
+                    .nomCreateur(arbre.getCreateur() != null ?
                             arbre.getCreateur().getNom() + " " + arbre.getCreateur().getPrenom() : null)
                     .racines(new ArrayList<>())
                     .nombreMembres(0)
@@ -183,7 +183,7 @@ public class ArbreGenealogiqueService {
         // Construire la structure hiérarchique récursive
         List<NoeudArbreDTO> racinesDTO = new ArrayList<>();
         int maxNiveau = 0;
-        
+
         for (MembreArbre racine : racines) {
             NoeudArbreDTO noeud = construireNoeudRecursif(racine, membresMap, 0, 0.0, 0.0);
             racinesDTO.add(noeud);
@@ -202,7 +202,7 @@ public class ArbreGenealogiqueService {
                 .idFamille(famille.getId())
                 .nomFamille(famille.getNom())
                 .idCreateur(arbre.getCreateur() != null ? arbre.getCreateur().getId() : null)
-                .nomCreateur(arbre.getCreateur() != null ? 
+                .nomCreateur(arbre.getCreateur() != null ?
                         arbre.getCreateur().getNom() + " " + arbre.getCreateur().getPrenom() : null)
                 .racines(racinesDTO)
                 .nombreMembres(tousMembres.size())
@@ -214,18 +214,18 @@ public class ArbreGenealogiqueService {
     /**
      * Construit récursivement un nœud de l'arbre avec ses enfants.
      */
-    private NoeudArbreDTO construireNoeudRecursif(MembreArbre membre, 
-                                                   Map<Long, MembreArbre> membresMap, 
-                                                   int niveau, 
-                                                   double posX, 
-                                                   double posY) {
+    private NoeudArbreDTO construireNoeudRecursif(MembreArbre membre,
+                                                  Map<Long, MembreArbre> membresMap,
+                                                  int niveau,
+                                                  double posX,
+                                                  double posY) {
         // Récupérer tous les enfants de ce membre
         List<MembreArbre> enfants = membreArbreRepository.findByPereIdOrMereId(membre.getId(), membre.getId());
-        
+
         // Construire les nœuds enfants
         List<NoeudArbreDTO> enfantsDTO = new ArrayList<>();
         double enfantPosX = posX;
-        
+
         for (MembreArbre enfant : enfants) {
             NoeudArbreDTO enfantNoeud = construireNoeudRecursif(enfant, membresMap, niveau + 1, enfantPosX, posY + 1.0);
             enfantsDTO.add(enfantNoeud);
@@ -262,7 +262,7 @@ public class ArbreGenealogiqueService {
         if (noeud.getEnfants() == null || noeud.getEnfants().isEmpty()) {
             return noeud.getNiveau();
         }
-        
+
         int maxNiveau = noeud.getNiveau();
         for (NoeudArbreDTO enfant : noeud.getEnfants()) {
             maxNiveau = Math.max(maxNiveau, calculerNiveauMax(enfant));
@@ -275,19 +275,19 @@ public class ArbreGenealogiqueService {
      */
     private void calculerPositions(List<NoeudArbreDTO> noeuds, int niveau, double startX) {
         double currentX = startX;
-        
+
         for (NoeudArbreDTO noeud : noeuds) {
             noeud.setPositionX(currentX);
             noeud.setPositionY(niveau);
-            
+
             if (noeud.getEnfants() != null && !noeud.getEnfants().isEmpty()) {
                 // Calculer la largeur totale des enfants
                 double largeurEnfants = calculerLargeur(noeud.getEnfants());
                 double startXEnfants = currentX - (largeurEnfants / 2.0) + 0.5;
-                
+
                 calculerPositions(noeud.getEnfants(), niveau + 1, startXEnfants);
             }
-            
+
             currentX += 1.0;
         }
     }
@@ -299,7 +299,7 @@ public class ArbreGenealogiqueService {
         if (noeuds == null || noeuds.isEmpty()) {
             return 1.0;
         }
-        
+
         double largeur = 0.0;
         for (NoeudArbreDTO noeud : noeuds) {
             if (noeud.getEnfants() != null && !noeud.getEnfants().isEmpty()) {
@@ -382,16 +382,38 @@ public class ArbreGenealogiqueService {
         }
 
         // 6. Définir les relations familiales si fournies
-        if (request.getParent1Id() != null && request.getParent1Id() > 0) {
-            MembreArbre parent1 = membreArbreRepository.findById(request.getParent1Id())
-                    .orElseThrow(() -> new NotFoundException("Parent 1 non trouvé"));
-            membreArbre.setPere(parent1);
+        // --- Gestion du Parent 1 (Père) ---
+// 1. On vérifie que la chaîne n'est ni null, ni vide, ni la chaîne "0" (envoyée par Flutter si "Non spécifié")
+        if (request.getParent1Id() != null && !request.getParent1Id().isEmpty() && !request.getParent1Id().equals("0")) {
+            try {
+                // 2. Conversion de la String en Long
+                Long parent1LongId = Long.parseLong(request.getParent1Id());
+
+                // 3. Récupération et assignation du membre
+                MembreArbre parent1 = membreArbreRepository.findById(parent1LongId)
+                        .orElseThrow(() -> new NotFoundException("Parent 1 non trouvé. ID: " + request.getParent1Id()));
+                membreArbre.setPere(parent1);
+
+            } catch (NumberFormatException e) {
+                // Gérer l'exception si la chaîne n'est pas un nombre (sécurité)
+                throw new BadRequestException("ID du Parent 1 non valide : " + request.getParent1Id());
+            }
         }
 
-        if (request.getParent2Id() != null && request.getParent2Id() > 0) {
-            MembreArbre parent2 = membreArbreRepository.findById(request.getParent2Id())
-                    .orElseThrow(() -> new NotFoundException("Parent 2 non trouvé"));
-            membreArbre.setMere(parent2);
+// --- Gestion du Parent 2 (Mère) ---
+        if (request.getParent2Id() != null && !request.getParent2Id().isEmpty() && !request.getParent2Id().equals("0")) {
+            try {
+                // 2. Conversion de la String en Long
+                Long parent2LongId = Long.parseLong(request.getParent2Id());
+
+                // 3. Récupération et assignation du membre
+                MembreArbre parent2 = membreArbreRepository.findById(parent2LongId)
+                        .orElseThrow(() -> new NotFoundException("Parent 2 non trouvé. ID: " + request.getParent2Id()));
+                membreArbre.setMere(parent2);
+
+            } catch (NumberFormatException e) {
+                throw new BadRequestException("ID du Parent 2 non valide : " + request.getParent2Id());
+            }
         }
 
         // 7. Sauvegarder le membre
@@ -419,7 +441,7 @@ public class ArbreGenealogiqueService {
      * Inclut les descendants (enfants, petits-enfants, etc.), les ascendants (parents, grands-parents, etc.)
      * et les frères et sœurs.
      * L'ordre d'affichage est : Parent1 (père) -> Parent2 (mère) -> Membre de référence -> Autres membres
-     * 
+     *
      * @param membreId ID du membre de référence
      * @return Liste de tous les membres liés, triée par ordre de relation
      */
@@ -436,25 +458,25 @@ public class ArbreGenealogiqueService {
 
         // Trier les membres : Parent1 (père) -> Parent2 (mère) -> Membre de référence -> Autres
         List<MembreArbreDTO> membresTriees = new ArrayList<>();
-        
+
         // 1. Ajouter le père (parent1) s'il existe
         if (membreReference.getPere() != null && membresLies.contains(membreReference.getPere())) {
             membresTriees.add(convertToMembreArbreDTO(membreReference.getPere()));
         }
-        
+
         // 2. Ajouter la mère (parent2) s'il existe
         if (membreReference.getMere() != null && membresLies.contains(membreReference.getMere())) {
             membresTriees.add(convertToMembreArbreDTO(membreReference.getMere()));
         }
-        
+
         // 3. Ajouter le membre de référence
         membresTriees.add(convertToMembreArbreDTO(membreReference));
-        
+
         // 4. Ajouter tous les autres membres (en excluant père, mère et membre de référence)
         membresLies.stream()
-                .filter(m -> !m.getId().equals(membreId) && 
-                           (membreReference.getPere() == null || !m.getId().equals(membreReference.getPere().getId())) &&
-                           (membreReference.getMere() == null || !m.getId().equals(membreReference.getMere().getId())))
+                .filter(m -> !m.getId().equals(membreId) &&
+                        (membreReference.getPere() == null || !m.getId().equals(membreReference.getPere().getId())) &&
+                        (membreReference.getMere() == null || !m.getId().equals(membreReference.getMere().getId())))
                 .map(this::convertToMembreArbreDTO)
                 .sorted((m1, m2) -> {
                     // Trier les autres membres par date de naissance (du plus ancien au plus récent)
@@ -470,7 +492,7 @@ public class ArbreGenealogiqueService {
 
     /**
      * Méthode récursive pour collecter tous les membres liés à un membre donné.
-     * 
+     *
      * @param membre Membre actuel
      * @param membresVisites Set des IDs de membres déjà visités (éviter les boucles infinies)
      * @param membresLies Set des membres liés collectés

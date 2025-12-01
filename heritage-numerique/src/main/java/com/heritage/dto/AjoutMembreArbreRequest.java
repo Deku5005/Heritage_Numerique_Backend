@@ -41,9 +41,9 @@ public class AjoutMembreArbreRequest {
 
     private String biographie;
 
-    private Long parent1Id;
+    private String parent1Id;
 
-    private Long parent2Id;
+    private String parent2Id;
 
     @NotNull(message = "L'ID de la famille est obligatoire")
     private Long idFamille;
