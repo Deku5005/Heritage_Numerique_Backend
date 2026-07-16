@@ -84,13 +84,29 @@ public class SwaggerConfig {
      * @return Liste des serveurs disponibles
      */
     private List<Server> apiServers() {
+        // Détection automatique de l'URL Render
+        String renderUrl = System.getenv("RENDER_EXTERNAL_URL");
+
+        // Si on est sur Render, on utilise l'URL Render en premier
+        if (renderUrl != null && !renderUrl.isEmpty()) {
+            return List.of(
+                    new Server()
+                            .url(renderUrl)
+                            .description("Serveur de production (Render)"),
+                    new Server()
+                            .url("http://localhost:8080")
+                            .description("Serveur de développement local")
+            );
+        }
+
+        // En local, on garde les deux serveurs habituels
         return List.of(
                 new Server()
                         .url("http://localhost:8080")
                         .description("Serveur de développement local"),
                 new Server()
                         .url("https://api.heritage-numerique.com")
-                        .description("Serveur de production")
+                        .description("Serveur de production (domaine personnalisé)")
         );
     }
 
