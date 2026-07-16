@@ -1,4 +1,5 @@
-package com.heritage.repository;
+package com.heritage.service;
+
 
 import com.heritage.entite.Conversation;
 import com.heritage.entite.Message;
@@ -9,8 +10,10 @@ import java.util.List;
 
 public interface ChatService {
 
+    // conversation famille
     Conversation creerConversationFamille(Long familleId, Long createurId);
 
+    // groupe
     Conversation creerGroupe(
             Long familleId,
             String nom,
@@ -18,8 +21,14 @@ public interface ChatService {
             List<Long> participantsIds
     );
 
-    Conversation creerPrive(Long user1, Long user2, Long familleId);
+    // conversation privée
+    Conversation creerPrive(
+            Long user1,
+            Long user2,
+            Long familleId
+    );
 
+    // envoyer message
     Message envoyerMessage(
             Long conversationId,
             Long expediteurId,
@@ -28,13 +37,19 @@ public interface ChatService {
             String urlMedia
     );
 
+    // lire messages
     Page<Message> lireMessages(
             Long conversationId,
             int page,
             int size
     );
 
-    void marquerCommeLu(Long messageId, Long utilisateurId);
+    // message lu
+    void marquerCommeLu(
+            Long messageId,
+            Long utilisateurId
+    );
 
+    // liste conversations utilisateur
     List<Conversation> conversationsUtilisateur(Long utilisateurId);
 }
