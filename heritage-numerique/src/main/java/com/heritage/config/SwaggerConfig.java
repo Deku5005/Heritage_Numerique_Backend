@@ -87,6 +87,8 @@ public class SwaggerConfig {
         // Détection automatique de l'URL Render
         String renderUrl = System.getenv("RENDER_EXTERNAL_URL");
 
+        // LOG pour vérifier (affiche dans les logs Render)
+        System.out.println("🔍 RENDER_EXTERNAL_URL = " + renderUrl);
         // Si on est sur Render, on utilise l'URL Render en premier
         if (renderUrl != null && !renderUrl.isEmpty()) {
             return List.of(
